@@ -133,4 +133,4 @@ th, td { text-align: left; vertical-align: top; padding: 6px 8px; border-bottom:
 .op-group { margin: 0 0 var(--space-3, 12px); }
 .op-group-h { display: flex; align-items: baseline; gap: 6px; margin: 0 0 6px; font-size: 1rem; }
 .op-group-h .linkish { background: none; border: 0; padding: 0; cursor: pointer; font: inherit; color: inherit; text-decoration: underline; }
-.op-group ul { margin: 0; padding: 0 0 0 10px; border-left: 2px solid var(--line, #ddd); }
+.op-group ul { margin: 0; padding: 0 0 0 10px; border-left: 2px solid var(--line); }
