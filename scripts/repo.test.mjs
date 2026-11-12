@@ -3,6 +3,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -133,4 +134,14 @@ test('no shipped text names a real customer, company, tenant or personal path, a
     if (/\.(md|json)$/.test(name) && retired.test(t)) hits.push(`${path.relative(root, p)}: retired wording`);
   });
   assert.deepEqual(hits, []);
+});
+
+test('the vendored TopMenu matches its sha256 pin (rule 22: never hand-edit the copy; re-vendor from shared/top-menu)', () => {
+  const dir = path.join(root, 'web/src/top-menu');
+  const pins = new Map(fs.readFileSync(path.join(dir, 'top-menu.sha256'), 'utf8').split('\n').filter((l) => l.trim()).map((l) => { const [h, f] = l.trim().split(/\s+/); return [f, h]; }));
+  for (const f of ['TopMenu.jsx', 'top-menu.css']) {
+    assert.ok(pins.has(f), `the pin file lists ${f}`);
+    const actual = crypto.createHash('sha256').update(fs.readFileSync(path.join(dir, f))).digest('hex');
+    assert.equal(actual, pins.get(f), `${f} differs from top-menu.sha256 (hand-edited copy, or re-vendored without regenerating the pin)`);
+  }
 });
