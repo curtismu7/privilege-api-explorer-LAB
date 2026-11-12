@@ -1,4 +1,4 @@
-// The runtime netguard (src/netguard.js, installed by the server when it starts): zero real outbound by default; Live holds a permit for
+// The runtime netguard (src/netguard.js, installed by the server when it starts): zero real outbound by default; Real holds a permit for
 // each host of the saved connection in use, only while one operation on it runs. (test/netguard.js is the separate recorder the API
 // tests use; this file tests the guard the shipped server runs under.)
 import assert from 'node:assert/strict';
@@ -9,7 +9,7 @@ import net from 'node:net';
 import test from 'node:test';
 import { installNetguard, isActive, isAllowed, netguardSelfTest, permit } from '../src/netguard.js';
 import { liveHosts } from '../src/urls.js';
-import { ENV_ID, startApp, workerConn } from './helpers.js';
+import { TENANT, connBody, startApp, withMockUrl } from './helpers.js';
 
 test('self-test: every route out is refused and recorded, none reaches the network', async () => {
   const r = await netguardSelfTest();
@@ -75,36 +75,34 @@ test('a permit allows exactly one named host, only while held; loopback never ne
   a(); assert.equal(isAllowed('real.example'), true); b(); assert.equal(isAllowed('real.example'), false);
 });
 
-test('liveHosts: the mock needs none; PingOne needs the token host and the MCP host of its region; a custom server only its own host', () => {
-  assert.deepEqual(liveHosts(workerConn()), []);
-  assert.deepEqual(liveHosts({ kind: 'pingone', region: 'eu', envId: ENV_ID, endpointStyle: 'api' }), ['auth.pingone.eu', 'api.pingone.eu']);
-  assert.deepEqual(liveHosts({ kind: 'pingone', region: 'com', envId: ENV_ID, endpointStyle: 'mcp-host' }), ['auth.pingone.com', 'mcp.pingone.com']);
-  assert.deepEqual(liveHosts({ kind: 'custom', url: 'https://mcp.example/mcp' }), ['mcp.example']);
+test('liveHosts: the one console origin the connection names', () => {
+  assert.deepEqual(liveHosts({ url: 'https://console.example.com' }), ['console.example.com']);
+  assert.deepEqual(liveHosts({ url: 'http://127.0.0.1:8643' }), ['127.0.0.1']);
   assert.deepEqual(liveHosts(null), []);
 });
 
-test('Live holds a permit for each host of the connection in use while an operation runs, and gives it back; Mock holds none', async () => {
+test('Real holds a permit for the connection\'s console host while an operation runs, and gives it back; Mock holds none', async () => {
   const seen = [];
   const fetchImpl = async (url, init) => {
     const host = new URL(url).hostname;
     if (host === '127.0.0.1') return fetch(url, init); // the in-process mock, on loopback: the real fetch, under the guard
     seen.push({ host, target: isAllowed(host), stranger: isAllowed('stranger.example') });
-    const body = host.startsWith('auth.') ? { access_token: 'tok-abcdef', expires_in: 3600 } : { jsonrpc: '2.0', id: 1, result: { tools: [{ name: 'listApplications', description: 'x', inputSchema: { type: 'object', properties: {} } }] } };
-    return new Response(JSON.stringify(body), { status: 200, headers: { 'content-type': 'application/json' } });
+    return new Response(JSON.stringify({ note: 'stub' }), { status: 200, headers: { 'content-type': 'application/json' } });
   };
   const guard = installNetguard();
   const s = await startApp({ fetchImpl });
   try {
-    const custom = (await s.call('POST', '/api/connections', { kind: 'custom', label: 'c', url: 'https://mcp.example/mcp' })).json;
-    assert.equal((await s.call('POST', `/api/connections/${custom.id}/test`)).json.ok, true);
-    const p1 = (await s.call('POST', '/api/connections', { kind: 'pingone', region: 'com', envId: ENV_ID, auth: 'worker', clientId: 'w1', clientSecret: 'sentinel-secret-1', endpointStyle: 'api' })).json;
-    assert.equal((await s.call('POST', `/api/connections/${p1.id}/test`)).json.ok, true);
-    assert.deepEqual([...new Set(seen.map((x) => x.host))], ['mcp.example', 'auth.pingone.com', 'api.pingone.com'], 'a custom server handshakes first: several calls, one host');
+    const c = (await s.call('POST', '/api/connections', connBody({ url: 'https://console.example.com', apiKey: 'k', apiSecret: 'sentinel-secret-1' }))).json;
+    const spec = (await s.call('GET', '/api/spec?q=users&method=get')).json;
+    const usersOp = spec.operations.find((o) => o.path === '/api/{ObjectMeta.Tenant}/v1/users');
+    assert.equal((await s.call('POST', `/api/connections/${c.id}/call`, { opId: usersOp.id, values: {} })).json.status, 200);
+    assert.deepEqual([...new Set(seen.map((x) => x.host))], ['console.example.com']);
     for (const x of seen) { assert.equal(x.target, true, `${x.host} is permitted while its operation runs`); assert.equal(x.stranger, false, 'no other host is'); }
-    for (const h of ['mcp.example', 'auth.pingone.com', 'api.pingone.com']) assert.equal(isAllowed(h), false, `${h} is released afterwards`);
+    assert.equal(isAllowed('console.example.com'), false, 'released afterwards');
+    assert.ok(!JSON.stringify(seen).includes('sentinel-secret-1'));
     // Mock: nothing permitted, and a whole mock session leaves no attempt.
     seen.length = 0;
-    const m = (await s.call('POST', '/api/connections', workerConn({ clientId: 'admin-demo' }))).json;
+    const m = (await s.call('POST', '/api/connections', withMockUrl(s))).json;
     assert.equal((await s.call('POST', `/api/connections/${m.id}/test`)).json.ok, true);
     assert.equal(seen.length, 0, 'the mock reaches only loopback: no host is ever permitted for it');
     assert.deepEqual(guard.attempts, [], 'zero outbound attempts');

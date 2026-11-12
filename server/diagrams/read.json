@@ -1,0 +1,149 @@
+{
+ "schema": "diagram-studio/1",
+ "id": "read",
+ "title": "One API call, end to end",
+ "lede": "The page asks this app; this app adds the key/secret headers and calls the console; the answer comes back with the timing. Simulated in Mock.",
+ "groups": {
+  "client": {
+   "label": "Your side",
+   "color": "dark"
+  },
+  "app": {
+   "label": "This app",
+   "color": "red"
+  },
+  "console": {
+   "label": "Privilege console API",
+   "color": "blue"
+  }
+ },
+ "nodes": [
+  {
+   "id": "browser",
+   "label": "Your browser",
+   "group": "client",
+   "sub": [
+    "Search, pick an operation, press Call."
+   ],
+   "x": 0,
+   "y": 150
+  },
+  {
+   "id": "app",
+   "label": "This app (server)",
+   "group": "app",
+   "sub": [
+    "Holds the API secret (write-only), fills the tenant, writes the audit."
+   ],
+   "x": 320,
+   "y": 150
+  },
+  {
+   "id": "mock",
+   "label": "In-process mock console",
+   "group": "console",
+   "sub": [
+    "Mock mode. Loopback only, sample data, labelled."
+   ],
+   "x": 660,
+   "y": 30
+  },
+  {
+   "id": "api",
+   "label": "Privilege console API",
+   "group": "console",
+   "sub": [
+    "Real mode. x-api-key / x-api-secret / x-procyon-session-id."
+   ],
+   "x": 660,
+   "y": 280
+  }
+ ],
+ "edges": [
+  {
+   "source": "browser",
+   "target": "app",
+   "label": "POST /api/connections/:id/call",
+   "handles": [
+    "r1",
+    "l1"
+   ]
+  },
+  {
+   "source": "app",
+   "target": "mock",
+   "label": "GET /api/<tenant>/v1/... (mock)",
+   "handles": [
+    "r1",
+    "l1"
+   ]
+  },
+  {
+   "source": "app",
+   "target": "api",
+   "label": "GET /api/<tenant>/v1/... (real)",
+   "handles": [
+    "r2",
+    "l1"
+   ]
+  },
+  {
+   "source": "api",
+   "target": "app",
+   "label": "status + JSON + ms",
+   "handles": [
+    "l2",
+    "r2"
+   ],
+   "dashed": true
+  },
+  {
+   "source": "app",
+   "target": "browser",
+   "label": "result + audit entry",
+   "handles": [
+    "l1",
+    "r1"
+   ],
+   "dashed": true
+  }
+ ],
+ "steps": [
+  {
+   "title": "You search and press Call",
+   "what": "Type \"pi\" to see pi*, filter by tag or method, pick one of the 447 operations, press Call.",
+   "edges": [
+    0
+   ]
+  },
+  {
+   "title": "This app builds the request",
+   "what": "Path and query parameters are filled from the connection (the tenant) and the form. Nothing user-typed reaches the console unsanitised.",
+   "edges": [
+    0
+   ]
+  },
+  {
+   "title": "The credential is attached",
+   "what": "Mock: the in-process console on loopback answers from the sample tenant. Real: x-api-key, x-api-secret and a fresh x-procyon-session-id per call.",
+   "edges": [
+    1,
+    2
+   ]
+  },
+  {
+   "title": "The console answers",
+   "what": "Status, body and elapsed ms come back through this app. A 401/403 is surfaced as a login refusal.",
+   "edges": [
+    3
+   ]
+  },
+  {
+   "title": "Result and audit",
+   "what": "The page shows the raw response; the audit keeps the call (redacted, never the secret).",
+   "edges": [
+    4
+   ]
+  }
+ ]
+}

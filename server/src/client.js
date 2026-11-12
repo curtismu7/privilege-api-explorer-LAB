@@ -24,6 +24,7 @@ export function buildRequest(op, values = {}, { tenant } = {}) {
   }
   for (const p of op.params) {
     if (p.in === 'path' && path.includes(`{${p.name}}`)) throw new Error(`required path parameter "${p.name}" is missing`);
+    if (p.in === 'body') continue; // the body is passed separately by the caller
     if (p.required && p.in !== 'path' && !(p.name in out.query) && p.name !== 'ObjectMeta.Tenant') throw new Error(`required parameter "${p.name}" is missing`);
   }
   out.path = path + (Object.keys(out.query).length ? `?${new URLSearchParams(out.query).toString()}` : '');

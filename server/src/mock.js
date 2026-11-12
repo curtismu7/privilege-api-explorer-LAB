@@ -64,12 +64,12 @@ export function createMock({ now = Date.now } = {}) {
   async function handle(req, res) {
     const url = new URL(req.url, base || 'http://127.0.0.1');
     const parts = url.pathname.split('/').filter(Boolean); // [api, tenant, v1, collection, ns?, name?]
-    if (parts[0] !== 'api' || parts[2] !== 'v1' || parts[3] !== TENANT) return send(res, 404, { error: 'not_found' });
+    if (parts[0] !== 'api' || parts[2] !== 'v1' || parts[1] !== TENANT) return send(res, 404, { error: 'not_found' });
     const authz = checkAuth(req);
     if (authz) return send(res, authz.status, authz.body);
-    const coll = parts[4];
+    const coll = parts[3];
     const rec = COLLECTIONS[coll];
-    const name = parts.length >= 7 ? parts[6] : null;
+    const name = parts.length >= 6 ? parts[5] : null; // /api/<tenant>/v1/<coll>/<ns>/<name>
     config.calls.push({ method: req.method, path: url.pathname, at: now() });
 
     if (!rec) {

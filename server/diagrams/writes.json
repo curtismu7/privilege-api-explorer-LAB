@@ -1,0 +1,164 @@
+{
+ "schema": "diagram-studio/1",
+ "id": "writes",
+ "title": "Writes are gated; refusals are shown",
+ "lede": "Read-only by default. A write needs the connection switch; a refusal from the console is shown honestly. Simulated in Mock.",
+ "groups": {
+  "client": {
+   "label": "Your side",
+   "color": "dark"
+  },
+  "app": {
+   "label": "This app",
+   "color": "red"
+  },
+  "console": {
+   "label": "Privilege console API",
+   "color": "blue"
+  }
+ },
+ "nodes": [
+  {
+   "id": "browser",
+   "label": "Your browser",
+   "group": "client",
+   "sub": [
+    "Writes are off unless you switch them on for the connection."
+   ],
+   "x": 0,
+   "y": 150
+  },
+  {
+   "id": "app",
+   "label": "This app (server)",
+   "group": "app",
+   "sub": [
+    "allowWrites per connection; DELETE and PATCH always need it."
+   ],
+   "x": 320,
+   "y": 150
+  },
+  {
+   "id": "audit",
+   "label": "Audit log",
+   "group": "app",
+   "sub": [
+    "Every call: ok, refused or error. Secret redacted."
+   ],
+   "x": 320,
+   "y": -60
+  },
+  {
+   "id": "api",
+   "label": "Privilege console API",
+   "group": "console",
+   "sub": [
+    "401 / 403 on a wrong or scoped-out key is passed through."
+   ],
+   "x": 660,
+   "y": 150
+  }
+ ],
+ "edges": [
+  {
+   "source": "browser",
+   "target": "app",
+   "label": "POST /call (a write)",
+   "handles": [
+    "r1",
+    "l1"
+   ]
+  },
+  {
+   "source": "app",
+   "target": "app",
+   "label": "allowWrites?",
+   "handles": [
+    "t1",
+    "t2"
+   ]
+  },
+  {
+   "source": "app",
+   "target": "audit",
+   "label": "blocked:writes_disabled",
+   "handles": [
+    "t2",
+    "l1"
+   ],
+   "dashed": true
+  },
+  {
+   "source": "app",
+   "target": "api",
+   "label": "the call + key headers",
+   "handles": [
+    "r1",
+    "l1"
+   ]
+  },
+  {
+   "source": "api",
+   "target": "app",
+   "label": "401/403 refused",
+   "handles": [
+    "l2",
+    "r2"
+   ],
+   "dashed": true
+  },
+  {
+   "source": "app",
+   "target": "audit",
+   "label": "refused",
+   "handles": [
+    "t2",
+    "l1"
+   ]
+  }
+ ],
+ "steps": [
+  {
+   "title": "A write is attempted",
+   "what": "A POST, PUT, DELETE or PATCH on a connection with writes off.",
+   "edges": [
+    0
+   ]
+  },
+  {
+   "title": "The gate checks allowWrites",
+   "what": "POST and PUT run with writes off only if the body is empty-by-spec; DELETE and PATCH always need the switch.",
+   "edges": [
+    1
+   ]
+  },
+  {
+   "title": "Blocked, honestly",
+   "what": "The gate answers 403 writes_disabled and records the block. The page says how to turn writes on.",
+   "edges": [
+    2
+   ]
+  },
+  {
+   "title": "Or the call goes out",
+   "what": "With writes on, the call goes to the console with the key headers.",
+   "edges": [
+    3
+   ]
+  },
+  {
+   "title": "A refusal is passed through",
+   "what": "The console's own 401/403 (wrong key, scope too small, admin collection not allowed) is shown as-is.",
+   "edges": [
+    4
+   ]
+  },
+  {
+   "title": "Everything is audited",
+   "what": "ok, refused, blocked or error: the audit log keeps it, redacted.",
+   "edges": [
+    5
+   ]
+  }
+ ]
+}

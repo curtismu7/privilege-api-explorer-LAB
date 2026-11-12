@@ -25,7 +25,7 @@ function brokenDir(name, edit) {
 }
 
 test('the two diagrams are valid diagram-studio/1 data under the studio validator copy, and the files carry the schema name', () => {
-  assert.deepEqual([...DIAGRAM_NAMES], ['worker', 'interactive']);
+  assert.deepEqual([...DIAGRAM_NAMES], ['read', 'writes']);
   for (const n of DIAGRAM_NAMES) {
     const d = read(n);
     assert.equal(d.schema, 'diagram-studio/1');
@@ -34,15 +34,15 @@ test('the two diagrams are valid diagram-studio/1 data under the studio validato
   }
 });
 
-test('the data keeps the original picture: five boxes, one layout, 5 arrows and steps for the worker, 7 for the interactive sign-in, two dashed redirect arrows', () => {
-  const w = read('worker'), i = read('interactive');
-  assert.deepEqual(w.nodes.map((n) => [n.id, n.x, n.y]), [['browser', 0, 150], ['app', 300, 150], ['token', 300, -60], ['mcp', 600, 150], ['api', 900, 150]]);
-  assert.deepEqual(i.nodes, w.nodes, 'both models share one layout');
+test('the data: the read diagram walks the call path, the writes diagram walks the gate', () => {
+  const w = read('read'), i = read('writes');
+  assert.deepEqual(w.nodes.map((n) => n.id), ['browser', 'app', 'mock', 'api']);
+  assert.deepEqual(i.nodes.map((n) => n.id), ['browser', 'app', 'audit', 'api']);
   assert.equal(w.edges.length, 5); assert.equal(w.steps.length, 5);
-  assert.equal(i.edges.length, 7); assert.equal(i.steps.length, 7);
-  assert.deepEqual(i.edges.filter((e) => e.dashed).map((e) => e.label), ['sign in (redirect)', 'back with a code']);
-  assert.equal(w.edges.filter((e) => e.dashed).length, 0);
-  for (const d of [w, i]) assert.deepEqual(d.steps.map((st) => st.edges), d.edges.map((_, k) => [k]), 'each step walks one arrow, in order');
+  assert.equal(i.edges.length, 6); assert.equal(i.steps.length, 6);
+  assert.ok(i.edges.some((e) => e.label === 'blocked:writes_disabled'));
+  assert.ok(w.edges.some((e) => e.label.includes('x-api-key') === false && e.label.includes('real')));
+  for (const d of [w, i]) for (const st of d.steps) assert.ok(st.edges.every((k) => k < d.edges.length), 'each step walks existing arrows');
 });
 
 test('GET /api/diagrams lists names and titles; GET /api/diagrams/:name returns exactly the validated file', async () => {
@@ -80,9 +80,9 @@ test('an unknown name is a JSON 404 that does not echo the input; prototype-key 
 
 test('diagrams are read-only over HTTP: POST, PUT and DELETE are refused', async () => {
   for (const m of ['POST', 'PUT', 'DELETE']) {
-    const r = await s.call(m, '/api/diagrams/worker', {});
+    const r = await s.call(m, '/api/diagrams/read', {});
     assert.equal(r.status, 404, m);
-    assert.deepEqual(read('worker'), (await s.call('GET', '/api/diagrams/worker')).json);
+    assert.deepEqual(read('read'), (await s.call('GET', '/api/diagrams/read')).json);
   }
 });
 
@@ -92,13 +92,13 @@ test('the loader refuses to start on an invalid, missing or unreadable file', ()
     ['an arrow to a box that does not exist', (d) => { d.edges[0].target = 'ghost'; }, /unknown target/],
     ['a step that points at a missing arrow', (d) => { d.steps[0].edges = [99]; }, /edges/],
     ['an unknown group', (d) => { d.nodes[0].group = 'nope'; }, /unknown group/],
-    ['an id that is not the file name', (d) => { d.id = 'interactive'; }, /id must equal/],
+    ['an id that is not the file name', (d) => { d.id = 'writes'; }, /id must equal/],
     ['no steps', (d) => { d.steps = []; }, /at least one step/],
     ['a bad handles hint', (d) => { d.edges[0].handles = ['r1', 'zz']; }, /handles/],
     ['a handles hint that is not a pair', (d) => { d.edges[0].handles = 'r1'; }, /handles/],
   ];
   for (const [what, edit, re] of cases) {
-    const dir = brokenDir('worker', edit);
+    const dir = brokenDir('read', edit);
     assert.throws(() => createDiagrams({ dir }), re, what);
     assert.throws(() => createApp({ env: { PAE_DATA_DIR: tmpDir() }, diagramsDir: dir }), re, `${what}: createApp (so the server) does not start`);
   }
@@ -106,14 +106,14 @@ test('the loader refuses to start on an invalid, missing or unreadable file', ()
   assert.throws(() => createDiagrams({ dir: garbage }), /cannot be read as JSON/);
   const empty = tmpDir();
   assert.throws(() => createDiagrams({ dir: empty }), /cannot be read as JSON/, 'a missing file stops startup');
-  assert.doesNotThrow(() => createDiagrams({ dir: brokenDir('worker', () => {}) }), 'an unchanged copy loads');
+  assert.doesNotThrow(() => createDiagrams({ dir: brokenDir('read', () => {}) }), 'an unchanged copy loads');
 });
 
 test('lookups never reach object prototypes: only the allow-list names resolve', () => {
   const d = createDiagrams();
-  for (const k of ['__proto__', 'constructor', 'prototype', 'toString', 'hasOwnProperty', '', 'worker ', ' worker', 'Worker']) assert.equal(d.get(k), null, JSON.stringify(k));
-  for (const k of [undefined, null, 1, {}, [], ['worker'], { toString: () => 'worker' }]) assert.equal(d.get(k), null);
-  assert.equal(d.get('worker').id, 'worker');
+  for (const k of ['__proto__', 'constructor', 'prototype', 'toString', 'hasOwnProperty', '', 'read ', ' read', 'Read']) assert.equal(d.get(k), null, JSON.stringify(k));
+  for (const k of [undefined, null, 1, {}, [], ['read'], { toString: () => 'read' }]) assert.equal(d.get(k), null);
+  assert.equal(d.get('read').id, 'read');
 });
 
 test('doctor has a diagrams check that passes on the shipped files', () => {
