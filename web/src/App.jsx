@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
 import fs from "node:fs";
-import ShelfLink from "./components/ShelfLink.jsx";
 import * as api from "./api.js";
 import Banner from "./components/Banner.jsx";
 import Audit from "./pages/Audit.jsx";
@@ -126,7 +125,6 @@ function Shell() {
               version={VERSION}
               onReset={reset}
             >
-              <ShelfLink />
               <span className="chip" data-testid="mode">Mode: {mode}</span>
             </TopMenu>
           </div>

@@ -54,21 +54,25 @@ function OpCard({ op, values, setValues, body, setBody, bodyErr, setBodyErr, bus
       {expanded && (
         <div className="op-card__runner" data-testid="op-runner">
           <p className="meta">Service: <Untrusted text={op.tag} />{op.summary ? <> — <Untrusted text={op.summary} /></> : null}</p>
-          {op.params.filter((p) => p.in !== "body").length === 0 ? null : op.params.filter((p) => p.in !== "body").map((p) => {
-            const req = p.required || p.name === "ObjectMeta.Tenant";
-            return (
-              <label className="field" key={p.name}>
-                {p.name} <small>({p.in}){req && <abbr title="filled automatically from the connection"> tenant</abbr>}{p.required && p.name !== "ObjectMeta.Tenant" && <abbr title="required"> *</abbr>}</small>
-                <input
-                  value={values[p.name] ?? ""}
-                  onChange={(e) => setValues((v) => { const n = { ...v }; if (e.target.value === "") delete n[p.name]; else n[p.name] = e.target.value; return n; })}
-                  spellCheck="false"
-                  autoComplete="off"
-                  data-testid={`param-${p.name}`}
-                />
-              </label>
-            );
-          })}
+          {op.params.filter((p) => p.in !== "body").length === 0 ? null : (
+            <div className="op-runner__params">
+              {op.params.filter((p) => p.in !== "body").map((p) => {
+                const req = p.required || p.name === "ObjectMeta.Tenant";
+                return (
+                  <label className="field" key={p.name}>
+                    {p.name} <small>({p.in}){req && <abbr title="filled automatically from the connection"> tenant</abbr>}{p.required && p.name !== "ObjectMeta.Tenant" && <abbr title="required"> *</abbr>}</small>
+                    <input
+                      value={values[p.name] ?? ""}
+                      onChange={(e) => setValues((v) => { const n = { ...v }; if (e.target.value === "") delete n[p.name]; else n[p.name] = e.target.value; return n; })}
+                      spellCheck="false"
+                      autoComplete="off"
+                      data-testid={`param-${p.name}`}
+                    />
+                  </label>
+                );
+              })}
+            </div>
+          )}
           {op.method !== "GET" && op.method !== "DELETE" && (
             <label className="field">Request body (JSON)
               <textarea rows={4} value={body} onChange={(e) => { setBody(e.target.value); setBodyErr(""); }} spellCheck="false" data-testid="body" />

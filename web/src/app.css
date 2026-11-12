@@ -14,10 +14,10 @@ main { padding: 8px 0 32px; outline: none; }
 .skip:focus { left: 8px; top: 8px; }
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
-.top__bar { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; justify-content: space-between; padding: 12px 0 8px; position: relative; }
+.top__bar { display: flex; flex-wrap: nowrap; gap: 8px 16px; align-items: center; justify-content: space-between; padding: 12px 0 8px; position: relative; }
 html { font-size: var(--fs, 16px); }
-.top__title { margin: 0; font-size: 22px; }
-.top__tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.top__title { margin: 0; font-size: 22px; min-width: 0; max-width: 52%; }
+.top__tools { display: flex; flex-wrap: nowrap; gap: 8px; align-items: center; }
 .top__nav { display: flex; flex-wrap: wrap; gap: 6px; padding: 4px 0 8px; }
 .top__link { padding: 8px 12px; min-height: 40px; display: inline-flex; align-items: center; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); font-weight: 600; text-decoration: none; }
 .top__link[aria-current="page"] { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
@@ -155,3 +155,16 @@ main > .card ol li strong { color: var(--text, inherit); }
 .conn-status--ok { color: var(--status-ok); }
 .conn-status--pending { color: var(--muted); font-weight: 500; }
 .conn-status--bad { font-size: 1.15rem; }
+
+/* The inline runner (inside an operation card): compact. Many parameters must not blow the page up:
+   - parameter fields flow in a responsive multi-column grid, tight margins;
+   - the result body is capped at a fixed height with its own scroll;
+   - the result card inside the runner loses its outer margins/padding. */
+.op-card__runner .field { margin: 4px 0; }
+.op-runner__params { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 2px 12px; }
+.op-card__runner pre[data-testid="result-body"] { max-height: 220px; overflow: auto; margin: 4px 0 0; }
+.op-card__runner .kv { grid-template-columns: max-content minmax(0, 1fr); gap: 2px 12px; margin: 4px 0; }
+.op-card__runner .op-card .card, .op-card__runner [data-testid="result"] { margin: 4px 0 0; padding: 8px 10px; }
+.op-card__runner [data-testid="result"] h2 { margin: 0 0 4px; font-size: 0.95rem; }
+.op-card__runner .hint { margin: 2px 0 0; }
+@media (max-width: 700px) { .op-runner__params { grid-template-columns: minmax(0, 1fr); } }
