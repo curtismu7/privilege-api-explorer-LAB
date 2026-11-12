@@ -57,7 +57,7 @@ try {
   await page.waitForTimeout(400);
   const count = await page.getByTestId('match-count').textContent();
   check(/of 447 operations match/.test(count) && !count.startsWith('0 '), `the search answers (${count.trim()})`);
-  await page.getByTestId('op-card').first().locator('button', { hasText: 'Open' }).click();
+  await page.getByTestId('op-card').first().locator('[data-testid="op-open"]').click(); // the runner lives inside the card now
   await page.getByTestId('call').click();
   await page.waitForSelector('[data-testid="result-status"]');
   check(await page.getByTestId('result-status').textContent() === '200', 'a mock call returns 200 in the result pane');
