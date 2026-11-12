@@ -6,6 +6,7 @@ import Banner from "./components/Banner.jsx";
 import Audit from "./pages/Audit.jsx";
 import Connections from "./pages/Connections.jsx";
 import Diagram from "./pages/Diagram.jsx";
+import Help from "./pages/Help.jsx";
 import Explorer from "./pages/Explorer.jsx";
 import { PresentBar, PresentProvider, usePresent } from "./present/Present.jsx";
 import TopMenu, { applyFontSize } from "./top-menu/TopMenu.jsx";
@@ -102,6 +103,7 @@ function Shell() {
       case "connections": return <Connections mode={mode} conns={modeConns} activeId={active?.id ?? null} onSelect={select} reload={reload} tests={tests} testBusy={testBusy} runTest={runTest} say={say} />;
       case "audit": return <Audit />;
       case "diagram": return <Diagram theme={theme} />;
+      case "help": return <Help />;
       default: return <Explorer conn={active} />;
     }
   })();
@@ -120,7 +122,7 @@ function Shell() {
               fontSize={{ value: fontStep, onChange: setFontStep }}
               present={{ active: present, onToggle: () => setPresent(!present) }}
               shelfUrl="https://local.ping-devops.com:8443/"
-              help={{ href: "https://github.com/curtismu7/privilege-api-explorer-LAB#readme" }}
+              help={{ href: "#/help", onClick: (e) => { e.preventDefault(); window.location.hash = "#/help"; } }}
               version={VERSION}
               onReset={reset}
             >

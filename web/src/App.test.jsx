@@ -151,6 +151,18 @@ test("Reset from the header calls the server and says what was kept", async () =
   await waitFor(() => expect(screen.getByTestId("live")).toHaveTextContent(/Saved connections kept/));
 });
 
+test("the Help button opens the in-app Privilege configuration guide", async () => {
+  fakeApi();
+  const user = userEvent.setup();
+  render(<App />);
+  await user.click(await screen.findByTestId("help-link"));
+  const steps = await screen.findByText("Part 1 — in the Privilege console");
+  expect(steps).toBeInTheDocument();
+  expect(screen.getByText("Part 2 — in this app")).toBeInTheDocument();
+  expect(screen.getByTestId("help-link")).toHaveAttribute("href", "#/help");
+  expect(screen.getByText(/Settings → For Developers/)).toBeInTheDocument();
+});
+
 test("hostile text from the server never becomes markup", async () => {
   fakeApi({ audit: [{ at: "<img src=x onerror=alert(1)>", op: "<script>bad()</script>", outcome: "ok", status: 200 }] });
   render(<App />);
