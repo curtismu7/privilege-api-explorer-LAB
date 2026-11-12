@@ -37,7 +37,7 @@ export function fakeApi({ conns = [conn()], audit = [], handlers = {}, real = RE
       case "POST /api/reset": return json(200, { ok: true, cleared: ["audit history", "mock tenant"], kept: ["connections"] });
       case "GET /api/connections": return json(200, { connections: state.conns });
       case "POST /api/connections": { const c = conn({ id: "c2", ...body, apiSecret: body.apiSecret ? "set" : undefined, allowWrites: false }); state.conns.push(c); return json(201, c); }
-      case "POST /api/mock-url": return json(200, { base: "http://127.0.0.1:9000", tenant: TENANT, apiKey: "demo-key-1111", apiSecret: "demo-secret-2222", fixture: "illustrative sample, not a recording" });
+      case "GET /api/mock-url": return json(200, { base: "http://127.0.0.1:9000", tenant: TENANT, apiKey: "demo-key-1111", apiSecret: "demo-secret-2222", fixture: "illustrative sample, not a recording" });
       case "POST /api/connections/:id/test": return json(200, { ok: true, status: 200, ms: 12, probed: `/api/${TENANT}/v1/users?ObjectMeta.Namespace=default` });
       case "POST /api/connections/:id/settings": state.conns[0].allowWrites = body.allowWrites; return json(200, state.conns[0]);
       case "GET /api/spec": return json(200, spec);

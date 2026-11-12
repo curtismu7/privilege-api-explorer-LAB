@@ -90,6 +90,7 @@ export default function TopMenu({
               <option value="mock">Mock</option>
               <option
                 value="real"
+                data-testid="mode-real"
                 disabled={mode.realAvailable === false}
                 title={mode.realAvailable === false ? (mode.realHint || "Real is not configured. Mock keeps working.") : undefined}
               >
