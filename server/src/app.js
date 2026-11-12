@@ -18,6 +18,8 @@ import { shelfInfo } from './shelfLink.js';
 const HAY = (o) => `${o.method} ${o.path} ${o.tag} ${o.summary} ${o.opId || ''}`.toLowerCase();
 const OPS = catalog.operations.map((o, i) => ({ id: `op-${i + 1}`, ...o, klass: CLASS_BY_METHOD[o.method] || 'write' }));
 const OPS_BY_ID = new Map(OPS.map((o) => [o.id, o]));
+// A mock connection points at the in-process mock (loopback). Anything else is Real.
+const isMockConn = (c) => { try { return ['127.0.0.1', 'localhost', '::1'].includes(new URL(c.url).hostname); } catch { return false; } };
 
 export function createApp({ env = process.env, lab = labAllowedHosts(env), store, mock, now = Date.now, fetchImpl = fetch, diagramsDir = DIAGRAM_DIR } = {}) {
   const diagrams = createDiagrams({ dir: diagramsDir }); // diagram-studio/1 data, validated now: an invalid file stops the app from starting
@@ -77,7 +79,8 @@ export function createApp({ env = process.env, lab = labAllowedHosts(env), store
   const h = (fn) => async (req, res) => {
     const conn = req.params.id ? store.get(req.params.id) : null;
     if (req.params.id && !conn) return res.status(404).json({ error: 'not_found', message: 'no such connection' });
-    if (conn && realGate) return refuseReal(res);
+    // A connection that does not point at the loopback mock is Real, and Real is refused while the guards fail.
+    if (conn && !isMockConn(conn) && realGate) return refuseReal(res);
     try {
       await withPermits(conn, () => fn(req, res, conn));
     } catch (err) { fail(res, conn, err); }
@@ -124,7 +127,12 @@ export function createApp({ env = process.env, lab = labAllowedHosts(env), store
   // ---- connections
   app.get('/api/connections', (_req, res) => res.json({ connections: store.list().map(view) }));
   app.post('/api/connections', (req, res) => {
-    if (realGate) return refuseReal(res);
+    // In mock mode a connection is only useful against the loopback mock; refuse anything else before it is stored.
+    if (runMode === 'mock') {
+      const b = req.body || {};
+      let ok = false; try { ok = new URL(b.url || 'x').hostname === '127.0.0.1' || new URL(b.url || 'x').hostname === 'localhost'; } catch { /* refused below */ }
+      if (!ok) return refuseReal(res);
+    } else if (realGate) return refuseReal(res);
     try { const c = store.create(req.body || {}); health.refresh(); res.status(201).json(view(c)); }
     catch (err) { res.status(400).json({ error: 'bad_request', message: scrub(err.message, [req.body?.apiSecret]) }); }
   });
@@ -196,6 +204,13 @@ export function createApp({ env = process.env, lab = labAllowedHosts(env), store
 
   // ---- audit + mock call log (evidence for the UI)
   app.get('/api/audit', (_req, res) => res.json({ entries: audit.recent() }));
+  // The mock connection helper: the base and the accepted credential pair of the in-process mock (mock mode only).
+  app.get('/api/mock-url', async (_req, res) => {
+    if (runMode !== 'mock') return res.status(409).json({ error: 'mock_only', message: 'the mock console exists only in mock mode' });
+    try { await ensureMock(); } catch { return res.status(500).json({ error: 'internal_error', message: 'the mock could not start' }); }
+    res.set('Cache-Control', 'no-store');
+    res.json({ base: theMock.base, tenant: theMock.TENANT, apiKey: 'demo-key-1111', apiSecret: 'demo-secret-2222', fixture: 'illustrative sample, not a recording' });
+  });
   app.get('/api/shelf', (_req, res) => { res.set('Cache-Control', 'no-store'); res.json(shelfInfo()); }); // the header "Shelf" button
 
   if (fs.existsSync(webDist)) { app.use(express.static(webDist)); app.get('*', (req, res, next) => (req.path.startsWith('/api/') ? next() : res.sendFile('index.html', { root: webDist }))); }

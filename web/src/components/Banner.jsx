@@ -4,19 +4,19 @@ import React from "react";
 // Under it: the state that must never be missed, writes on (alert) or off.
 export function bannerText(mode, conn) {
   if (mode === "mock") {
-    return "MOCK mode, simulated. An in-process mock of PingOne's hosted MCP server and authorization server answers on this machine. The tool catalog is an illustrative sample, not a recording, and its write tools change only an in-memory fake tenant. Nothing leaves this machine.";
+    return "MOCK mode, simulated. An in-process mock of the Privilege console API answers on this machine (loopback only). The sample tenant is illustrative, not a recording, and write calls change only that in-memory sample. Nothing leaves this machine.";
   }
-  const where = conn ? ` In use: ${conn.label}.` : " No Live connection is selected yet: add one on Connections.";
-  return `LIVE mode, owner-run. Calls go to the real server of the connection you use, with the credentials you saved, and act on it.${where} UNVERIFIED against a real tenant: whether the hosted PingOne server accepts a worker token, and which endpoint shape a tenant answers on (docs/live-checks.md).`;
+  const where = conn ? ` In use: ${conn.label}.` : " No Real connection is selected yet: add one on Connections.";
+  return `REAL mode, owner-run. Calls go to the Privilege console origin of the connection you use, with your saved API key and secret, and act on it.${where} Writes stay off until you enable them per connection.`;
 }
 
 export default function Banner({ mode, conn }) {
   return (
     <div data-testid="banner">
-      <p className="banner" role="note" data-state={mode === "live" ? "live" : "mock"}>{bannerText(mode, conn)}</p>
+      <p className="banner" role="note" data-state={mode === "real" ? "live" : "mock"}>{bannerText(mode, conn)}</p>
       {conn && (conn.allowWrites
-        ? <p className="notice" data-state="bad" role="alert"><strong>WRITES ARE ENABLED</strong> for {conn.label}. Write and destructive calls can run after you confirm them{mode === "live" ? ", on the real server above" : " (against the in-memory fake tenant)"}.</p>
-        : <p className="notice" data-state="ok" role="status">Writes are off. Read tools run; write and destructive tools are blocked.</p>)}
+        ? <p className="notice" data-state="bad" role="alert"><strong>WRITES ARE ENABLED</strong> for {conn.label}. Write and destructive calls can run{mode === "real" ? ", on the real console" : " (against the in-memory sample tenant)"}.</p>
+        : <p className="notice" data-state="ok" role="status">Writes are off. Read calls (GET) run; write and destructive calls are blocked.</p>)}
     </div>
   );
 }

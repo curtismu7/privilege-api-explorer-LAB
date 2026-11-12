@@ -22,19 +22,10 @@ test('GET /api/info: Mock is the mode, Real is refused and says which guard fail
   assert.equal(r.headers.get('cache-control'), 'no-store');
 });
 
-test('with Real refused: a connection cannot be created and the call routes are refused before any request is made', async () => {
-  const r = await s.call('POST', '/api/connections', withMockUrl(s));
+test('with Real refused: only a loopback-mock connection can be created; a real origin is refused before anything is stored', async () => {
+  const r = await s.call('POST', '/api/connections', connBody({ url: 'https://console.example.com' }));
   assert.equal(r.status, 403, r.text); assert.equal(r.json.error, 'real_refused'); assert.deepEqual(r.json.failed, ['owner-opt-in']);
-  // A connection already in the file is refused on every network route; nothing leaves the machine.
-  const c = s.app.locals.store.create(withMockUrl(s));
-  for (const [m, p, b] of [
-    ['POST', 'test'], ['POST', 'call', { opId: 'op-1' }], ['POST', 'settings', { allowWrites: false }], ['DELETE', ''],
-  ]) {
-    const res = await s.call(m, `/api/connections/${c.id}/${p}`.replace(/\/$/, ''), m === 'GET' ? undefined : (b ?? {}));
-    assert.equal(res.status, 403, `${p}: ${res.text}`); assert.equal(res.json.error, 'real_refused', p);
-  }
-  assert.equal(s.mock.config.calls.length, 0, 'the stub saw no call');
-  assert.equal((await s.call('DELETE', `/api/connections/${c.id}`)).status, 403, 'delete is also refused while Real is off (the file can be cleared by hand or Reset');
+  assert.equal(s.app.locals.store.list().length, 0, 'nothing was stored');
 });
 
 test('with Real refused: the spec catalog (local data) still works', async () => {

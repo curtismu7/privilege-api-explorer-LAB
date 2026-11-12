@@ -3,7 +3,6 @@ import { Background, Controls, Handle, MarkerType, Position, ReactFlow, applyNod
 import "@xyflow/react/dist/style.css";
 import { get } from "../api.js";
 import { usePresent } from "../present/Present.jsx";
-import StoryPanel from "../story/StoryPanel.jsx";
 
 // Browser -> this app -> PingOne token endpoint -> hosted MCP server -> admin API. The picture is diagram-studio/1 DATA (server/diagrams/*.json)
 // fetched by name from /api/diagrams/:name (rule 17): nothing in this file lists a box or an arrow. Boxes drag; Simulate walks one run, Reset
@@ -115,7 +114,7 @@ export default function Diagram({ theme = "system" }) {
         <button type="button" onClick={reset}>Reset</button>
       </div>
       {error && <p className="err-text" role="alert">Could not load the diagram ({error}).</p>}
-      <div className="flow-wrap" role="group" aria-label="Diagram: your browser, this app, PingOne's token endpoint, the hosted MCP server and the admin API. Boxes can be dragged.">
+      <div className="flow-wrap" role="group" aria-label="Diagram: your browser, this app, the mock console and the Privilege console API. Boxes can be dragged.">
         {doc && (
           <ReactFlow key={flowKey} nodes={nodes} edges={edges} nodeTypes={nodeTypes} onNodesChange={onNodesChange} colorMode={theme} fitView fitViewOptions={{ padding: 0.12 }} nodesConnectable={false} proOptions={{ hideAttribution: true }} minZoom={0.2}>
             <Background /><Controls showInteractive={false} />
@@ -123,7 +122,6 @@ export default function Diagram({ theme = "system" }) {
         )}
       </div>
       <p className="caption" role="status" aria-live="polite" data-testid="caption">{cur ? `Step ${step + 1} of ${steps.length}: ${cur.what}` : "Press Simulate to walk one run through the diagram."}</p>
-      <StoryPanel mode="tool-list" present={present} />
     </>
   );
 }
