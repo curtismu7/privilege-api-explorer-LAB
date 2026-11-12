@@ -36,7 +36,7 @@ test('README follows the README standard: title ends in LAB, plain Tier, Repo an
   const r = read('README.md');
   assert.match(r.split('\n')[0], /^# .* LAB$/);
   assert.match(r, /^Tier: Tester$/m);
-  assert.match(r, /^Repo: https:\/\/github\.com\/curtismu7\/pingone-mcp-inspector-LAB$/m);
+  assert.match(r, /^Repo: https:\/\/github\.com\/curtismu7\/privilege-api-explorer-LAB$/m);
   assert.match(r, /^Catalog: D3$/m);
   const at = (h) => r.indexOf(`\n## ${h}`);
   const order = ['What is simulated', 'Run from a clone', 'Settings file', 'Ports, and what to do if the port is taken', 'Mock and live modes', 'Health, doctor and reset', 'Docker (optional)', 'Tests', 'Troubleshooting', 'Ownership'].map(at);
@@ -112,11 +112,11 @@ test('no EC key generation through generateKeyPair(Sync) anywhere (SIGABRT on No
   assert.deepEqual(hits, []);
 });
 
-test('Live stays an opt-in: the page opens in Mock, and the only mode key is PINGONE_MCP_INSPECTOR_MODE', () => {
+test('Live stays an opt-in: the page opens in Mock, and the only mode key is PRIVILEGE_EXPLORER_MODE', () => {
   const app = read('web/src/App.jsx');
   assert.match(app, /useState\("mock"\)/);
   const cfg = read('server/src/config.js');
-  assert.match(cfg, /PINGONE_MCP_INSPECTOR_MODE/);
+  assert.match(cfg, /PRIVILEGE_EXPLORER_MODE/);
   assert.doesNotMatch(read('server/src/settings.js'), /['"]MODE['"]/);
   assert.match(read('server/src/index.js'), /applySharedSettings\(\)/);
   assert.doesNotMatch(read('server/src/index.js') + read('scripts/doctor.mjs'), /loadEnvFile/, 'no per-app .env is loaded; the shared settings file is read through util.parseEnv');
@@ -129,7 +129,7 @@ test('no shipped text names a real customer, company, tenant or personal path, a
     if (/(repo|docs|content-pack|shelf-entry)\.test\.mjs$/.test(p) || /\.(png|jpg|ico)$/.test(name)) return;
     // The two lab-proxy names are the one allowed use of "ping-devops": the proxy's public name (the Origin check and its tests name it)
     // and this app's own Host name (the compose default for LAB_ALLOWED_HOSTS). Anything else with that word is still a hit.
-    const t = fs.readFileSync(p, 'utf8').replace(/(?:pingone-mcp-inspector\.)?local\.ping-devops\.com/gi, 'LAB-HOST');
+    const t = fs.readFileSync(p, 'utf8').replace(/(?:privilege-api-explorer\.)?local\.ping-devops\.com/gi, 'LAB-HOST');
     for (const w of ['united airlines', 'mileageplus', 'datapower', 'optum', 'unitedhealth', 'uhg', 'personal-agent', 'ping-devops', 'amazonaws.com', '/users/cmuir', 'cmuir_pingcorp']) if (t.toLowerCase().includes(w)) hits.push(`${path.relative(root, p)}: ${w}`);
     if (/\.(md|json)$/.test(name) && retired.test(t)) hits.push(`${path.relative(root, p)}: retired wording`);
   });

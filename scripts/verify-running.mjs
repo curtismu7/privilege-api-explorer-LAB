@@ -21,9 +21,9 @@ async function call(method, p, body) {
 const ENV = '11111111-2222-4333-8444-555555555555'; // placeholder, not a tenant
 
 const h = await call('GET', '/api/health');
-check(h.status === 200 && h.json?.schema === 'demo-health/1' && ['ready', 'needs-setup'].includes(h.json.state) && h.json.demo?.id === 'pingone-mcp-inspector', `health contract demo-health/1 (state ${h.json?.state})`);
+check(h.status === 200 && h.json?.schema === 'demo-health/1' && ['ready', 'needs-setup'].includes(h.json.state) && h.json.demo?.id === 'privilege-api-explorer', `health contract demo-health/1 (state ${h.json?.state})`);
 const page = await call('GET', '/');
-check(page.status === 200 && /<div id="root"/.test(page.text) && /<title>[^<]*PingOne MCP Inspector/.test(page.text), 'the page is the built app (root div and title)');
+check(page.status === 200 && /<div id="root"/.test(page.text) && /<title>[^<]*Privilege API Explorer/.test(page.text), 'the page is the built app (root div and title)');
 const bad = await new Promise((resolve) => { const r = http.request({ host: '127.0.0.1', port: Number(hostPort), path: '/api/connections', headers: { Host: 'evil.example' } }, (res) => { res.resume(); resolve(res.statusCode); }); r.on('error', () => resolve(null)); r.end(); });
 check(bad === 403, 'a non-loopback Host header is refused');
 

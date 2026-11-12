@@ -1,4 +1,4 @@
-# PingOne MCP Inspector LAB: talk track
+# Privilege API Explorer LAB: talk track
 
 Generated from `web/src/data/stories/*.json` (generic vertical) by `npm run talk-track`. Do not edit by hand.
 

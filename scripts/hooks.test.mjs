@@ -8,7 +8,7 @@ import { test } from 'node:test';
 const hook = new URL('../.githooks/pre-commit', import.meta.url).pathname;
 
 test('the pre-commit hook refuses the commit when gitleaks is missing, and does not promise a CI that does not exist', () => {
-  const empty = fs.mkdtempSync(path.join(os.tmpdir(), 'p1mcp-nopath-'));
+  const empty = fs.mkdtempSync(path.join(os.tmpdir(), 'pae-nopath-'));
   try {
     const r = spawnSync('/bin/sh', [hook], { env: { PATH: empty }, encoding: 'utf8' });
     assert.equal(r.status, 1);
@@ -18,7 +18,7 @@ test('the pre-commit hook refuses the commit when gitleaks is missing, and does 
 });
 
 test('the pre-commit hook hands the staged changes to gitleaks when it is installed', () => {
-  const bin = fs.mkdtempSync(path.join(os.tmpdir(), 'p1mcp-fakebin-'));
+  const bin = fs.mkdtempSync(path.join(os.tmpdir(), 'pae-fakebin-'));
   try {
     fs.writeFileSync(path.join(bin, 'gitleaks'), '#!/bin/sh\necho "args:$*"\nexit 7\n', { mode: 0o755 });
     const r = spawnSync('/bin/sh', [hook], { env: { PATH: bin }, encoding: 'utf8' });

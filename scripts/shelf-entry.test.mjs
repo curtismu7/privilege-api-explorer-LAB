@@ -13,10 +13,10 @@ test('docs/shelf-entry.json passes the shelf registry rules (copied into scripts
 
 test('the entry matches this app: id, catalog id D3 (also in the content pack and the README), port 5201, /api/health, a relative compose file', () => {
   const [d] = entry.demos;
-  assert.equal(d.id, 'pingone-mcp-inspector');
+  assert.equal(d.id, 'privilege-api-explorer');
   assert.equal(d.catalogId, 'D3');
   assert.equal(d.kind, 'Tester');
-  assert.equal(d.composeFile, 'pingone-mcp-inspector-LAB/docker-compose.yml');
+  assert.equal(d.composeFile, 'privilege-api-explorer-LAB/docker-compose.yml');
   assert.ok(!path.isAbsolute(d.composeFile), 'composeFile must be relative or a placeholder');
   assert.ok(!/\/Users\//.test(JSON.stringify(entry)), 'no absolute home path');
   assert.equal(d.url, 'http://localhost:5201');

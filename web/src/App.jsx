@@ -32,17 +32,17 @@ export default function App() {
 
 function Shell() {
   const { present, set: setPresent } = usePresent();
-  const [fontStep, setFontStep] = useState(() => { const f = store.get("p1mcp.font"); return ["S", "M", "L"].includes(f) ? f : "M"; });
-  useEffect(() => { applyFontSize(fontStep); store.set("p1mcp.font", fontStep); }, [fontStep]);
+  const [fontStep, setFontStep] = useState(() => { const f = store.get("pae.font"); return ["S", "M", "L"].includes(f) ? f : "M"; });
+  useEffect(() => { applyFontSize(fontStep); store.set("pae.font", fontStep); }, [fontStep]);
   const [route, setRoute] = useState(parseHash);
   const [conns, setConns] = useState([]);
-  const [activeId, setActiveId] = useState(() => store.get("p1mcp.active"));
+  const [activeId, setActiveId] = useState(() => store.get("pae.active"));
   const [tests, setTests] = useState({});
   const [testBusy, setTestBusy] = useState(null);
   const [ts, setTs] = useState({ id: null, tools: null, loading: false, error: "" });
   const [msg, setMsg] = useState("");
   const [now, setNow] = useState(Date.now());
-  const [theme, setTheme] = useState(() => store.get("p1mcp.theme") || "system");
+  const [theme, setTheme] = useState(() => store.get("pae.theme") || "system");
   const [info, setInfo] = useState(null); // GET /api/info; null = not known yet
   const [mode, setModeState] = useState("mock");
   const [refusal, setRefusal] = useState("");
@@ -72,10 +72,10 @@ function Shell() {
     });
   }, []);
   useEffect(() => { const f = () => setRoute(parseHash()); window.addEventListener("hashchange", f); return () => window.removeEventListener("hashchange", f); }, []);
-  useEffect(() => { if (theme === "system") delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = theme; store.set("p1mcp.theme", theme); }, [theme]);
+  useEffect(() => { if (theme === "system") delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = theme; store.set("pae.theme", theme); }, [theme]);
 
   const reload = useCallback(async () => { const r = await api.get("/api/connections"); if (r.ok) setConns(r.json.connections); return r.ok ? r.json.connections : []; }, []);
-  const select = useCallback((id) => { setActiveId(id); store.set("p1mcp.active", id); }, []);
+  const select = useCallback((id) => { setActiveId(id); store.set("pae.active", id); }, []);
   // The mode decides which saved connections the page works with: Mock uses the in-process mock demo, Live uses the real servers.
   const modeConns = conns.filter((c) => (mode === "mock") === isMockConn(c));
   const active = modeConns.find((c) => c.id === activeId) || modeConns[0] || null;
@@ -106,8 +106,8 @@ function Shell() {
         window.history.replaceState(null, "", `${window.location.pathname}${window.location.hash}`);
         if (q.get("login") === "ok" && list.some((c) => c.id === q.get("connection"))) { select(q.get("connection")); say("Signed in."); runTest(q.get("connection")); }
         else say(`Sign-in failed (${q.get("reason") || "error"}). Nothing was stored.`);
-      } else if (!list.some((c) => c.id === store.get("p1mcp.active"))) setActiveId(list[0]?.id ?? null);
-      const want = q.get("connection") || (list.some((c) => c.id === store.get("p1mcp.active")) ? store.get("p1mcp.active") : list[0]?.id);
+      } else if (!list.some((c) => c.id === store.get("pae.active"))) setActiveId(list[0]?.id ?? null);
+      const want = q.get("connection") || (list.some((c) => c.id === store.get("pae.active")) ? store.get("pae.active") : list[0]?.id);
       const offline = list.find((c) => c.id === want && c.offline && c.auth === "worker");
       if (offline && !q.get("login")) runTest(offline.id); // the mock demo is safe to test on its own; a real server waits for the button
     })();
@@ -142,9 +142,9 @@ function Shell() {
       <a className="skip" href="#main" onClick={(e) => { e.preventDefault(); document.getElementById("main")?.focus(); }}>Skip to content</a>
       <header className="top">
         <Banner mode={mode} conn={active} />
-        <ReturnLink app="pingone-mcp-inspector" />
+        <ReturnLink app="privilege-api-explorer" />
         <div className="top__bar">
-          <h1 className="top__title">PingOne MCP Inspector LAB</h1>
+          <h1 className="top__title">Privilege API Explorer LAB</h1>
           <div className="top__tools">
             <TopMenu
               mode={{ value: mode === "live" ? "real" : "mock", onChange: setMode, realAvailable: info ? liveOk : null, realHint: info?.live?.needs?.length ? `Live is refused (${(info.live.failed ?? []).join(", ")}). ${info.live.needs.join(" ")}` : undefined }}
@@ -152,11 +152,11 @@ function Shell() {
               fontSize={{ value: fontStep, onChange: setFontStep }}
               present={{ active: present, onToggle: () => setPresent(!present) }}
               shelfUrl="https://local.ping-devops.com:8443/"
-              help={{ href: "https://github.com/curtismu7/pingone-mcp-inspector-LAB#readme" }}
+              help={{ href: "https://github.com/curtismu7/privilege-api-explorer-LAB#readme" }}
               version={VERSION}
               onReset={reset}
             >
-              <ReturnLink app="pingone-mcp-inspector" variant="header" />
+              <ReturnLink app="privilege-api-explorer" variant="header" />
               <ShelfLink />
               <span className="chip" data-testid="mode">Mode: {mode}</span>
             </TopMenu>

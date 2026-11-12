@@ -29,11 +29,11 @@ export function buildPack({ commit } = {}) {
   const ids = new Set(stories.map((s) => s.id));
   const pack = {
     schema: 'demo-content-pack/1',
-    id: 'pingone-mcp-inspector',
-    title: 'PingOne MCP Inspector LAB',
+    id: 'privilege-api-explorer',
+    title: 'Privilege API Explorer LAB',
     version: pkg.version,
-    ...(commit ? { source: { repo: 'pingone-mcp-inspector-LAB', commit } } : {}),
-    demo: { id: 'pingone-mcp-inspector', name: 'PingOne MCP Inspector LAB', catalog: 'D3', baseUrl: 'http://localhost:5201', doctor: '/api/health', tags: ['mcp', 'pingone', 'admin-plane', 'read-only'] },
+    ...(commit ? { source: { repo: 'privilege-api-explorer-LAB', commit } } : {}),
+    demo: { id: 'privilege-api-explorer', name: 'Privilege API Explorer LAB', catalog: 'D3', baseUrl: 'http://localhost:5201', doctor: '/api/health', tags: ['mcp', 'pingone', 'admin-plane', 'read-only'] },
     glossary: readJson('content/terms.json').sort(byId),
     sources: [],
     cards: CARDS.map(({ href, ...c }) => ({ ...c, action: { type: 'route', href } })).sort(byId),

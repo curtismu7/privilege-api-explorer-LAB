@@ -2,7 +2,7 @@
 // Each check: { id, level: 'pass' | 'info' | 'fail', detail }.
 import fs from 'node:fs';
 import path from 'node:path';
-import { MODE_KEY, PORT_MAX, PORT_MIN, dataDir, liveRefusal, modeFrom, port, portInRange } from './config.js';
+import { MODE_KEY, PORT_MAX, PORT_MIN, dataDir, modeFrom, port, portInRange, realRefusal } from './config.js';
 import { createDiagrams } from './diagrams.js';
 import { bindHost, isLoopbackHost, labAllowedHosts } from './security.js';
 
@@ -13,11 +13,11 @@ export function runChecks({ env = process.env } = {}) {
   const major = Number(process.versions.node.split('.')[0]);
   add('node', major >= 26 ? 'pass' : 'fail', major >= 26 ? `Node ${process.versions.node}` : `Node ${process.versions.node}; need 26 or newer`);
 
-  // Which mode Live is in: an opt-in, never a bare MODE. Mock is the default and needs no setup.
+  // Which mode Real is in: an opt-in, never a bare MODE. Mock is the default and needs no setup.
   try {
     const mode = modeFrom(env);
-    const refusal = liveRefusal(env);
-    add('mode', 'pass', mode === 'live' && !refusal ? `${MODE_KEY}=live: Live is allowed (owner opt-in); the page still opens in Mock` : mode === 'live' ? `${MODE_KEY}=live is set but Live is REFUSED (${refusal.failed.join(', ')})` : `${MODE_KEY} not set (mock): Live is refused until the owner opts in`);
+    const refusal = realRefusal(env);
+    add('mode', 'pass', mode === 'real' && !refusal ? `${MODE_KEY}=real: Real is allowed (owner opt-in); the page still opens in Mock` : mode === 'real' ? `${MODE_KEY}=real is set but Real is REFUSED (${refusal.failed.join(', ')})` : `${MODE_KEY} not set (mock): Real is refused until the owner opts in`);
   } catch (e) { add('mode', 'fail', e.message); }
 
   const dir = dataDir(env);
@@ -25,7 +25,7 @@ export function runChecks({ env = process.env } = {}) {
   catch { add('data-dir', 'fail', 'data directory is not writable'); }
 
   const host = bindHost(env);
-  add('bind', isLoopbackHost(host) || env.P1MCP_BIND ? 'pass' : 'fail', isLoopbackHost(host) ? 'loopback only' : env.P1MCP_BIND ? 'non-loopback bind opted in via P1MCP_BIND' : 'bind address is not loopback');
+  add('bind', isLoopbackHost(host) || env.PAE_BIND ? 'pass' : 'fail', isLoopbackHost(host) ? 'loopback only' : env.PAE_BIND ? 'non-loopback bind opted in via PAE_BIND' : 'bind address is not loopback');
 
   try {
     const n = labAllowedHosts(env).size;
@@ -38,7 +38,7 @@ export function runChecks({ env = process.env } = {}) {
   try { const d = createDiagrams(); add('diagrams', 'pass', `${d.names.length} diagrams are valid diagram-studio/1 data (${d.names.join(', ')})`); }
   catch (e) { add('diagrams', 'fail', e.message); }
 
-  add('outbound', 'info', 'Mock makes no outbound call. Live reaches only the hosts of the saved connection you use (https, or http on loopback), through the netguard; a typed name that resolves to a private address is not caught, only literal private addresses are refused');
+  add('outbound', 'info', 'Mock makes no outbound call. Real reaches only the console origin of the saved connection you use (https, or http on loopback), through the netguard; a typed name that resolves to a private address is not caught, only literal private addresses are refused');
   return out;
 }
 export const allPassed = (c) => c.every((x) => x.level !== 'fail');

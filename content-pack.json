@@ -1,11 +1,11 @@
 {
   "schema": "demo-content-pack/1",
-  "id": "pingone-mcp-inspector",
-  "title": "PingOne MCP Inspector LAB",
+  "id": "privilege-api-explorer",
+  "title": "Privilege API Explorer LAB",
   "version": "0.3.0",
   "demo": {
-    "id": "pingone-mcp-inspector",
-    "name": "PingOne MCP Inspector LAB",
+    "id": "privilege-api-explorer",
+    "name": "Privilege API Explorer LAB",
     "catalog": "D3",
     "baseUrl": "http://localhost:5201",
     "doctor": "/api/health",

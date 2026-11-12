@@ -42,14 +42,14 @@ test('the container hardening stays: non-root, read-only, no capabilities, no se
   assert.doesNotMatch(compose + dockerfile, /(SECRET|CLIENT_ID|ENV_ID|PASSWORD)\s*[:=]\s*\S/i, 'no tenant value or secret in the container files');
 });
 test('the container opts in to a non-loopback bind and the compose file does not publish it beyond loopback', () => {
-  assert.match(dockerfile, /P1MCP_BIND=0\.0\.0\.0/);
-  assert.match(compose, /P1MCP_BIND:\s*0\.0\.0\.0/);
-  assert.match(dockerfile, /^ENV P1MCP_CONTAINER=1$/m, 'the image marks itself as the container so the Live bind guard accepts the wide bind');
-  assert.match(compose, /P1MCP_CONTAINER:\s*"1"/);
+  assert.match(dockerfile, /PAE_BIND=0\.0\.0\.0/);
+  assert.match(compose, /PAE_BIND:\s*0\.0\.0\.0/);
+  assert.match(dockerfile, /^ENV PAE_CONTAINER=1$/m, 'the image marks itself as the container so the Live bind guard accepts the wide bind');
+  assert.match(compose, /PAE_CONTAINER:\s*"1"/);
 });
 test('Live is off in the container unless the owner passes it: the compose default is mock, and the image sets no mode', () => {
-  assert.match(compose, /PINGONE_MCP_INSPECTOR_MODE:\s*\$\{PINGONE_MCP_INSPECTOR_MODE:-mock\}/);
-  assert.doesNotMatch(dockerfile, /^\s*ENV\b.*PINGONE_MCP_INSPECTOR_MODE/m);
+  assert.match(compose, /PRIVILEGE_EXPLORER_MODE:\s*\$\{PRIVILEGE_EXPLORER_MODE:-mock\}/);
+  assert.doesNotMatch(dockerfile, /^\s*ENV\b.*PRIVILEGE_EXPLORER_MODE/m);
 });
 test('the compose file is Docker only: no k8s, no host mounts, no docker socket, no host network', () => {
   assert.doesNotMatch(compose, /network_mode|docker\.sock|privileged|\.\.?\//);

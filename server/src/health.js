@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import { allPassed, runChecks as defaultChecks } from './doctor.js';
 
 const { version } = JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
-const DEMO = { id: 'pingone-mcp-inspector', name: 'PingOne MCP Inspector LAB', version };
+const DEMO = { id: 'privilege-api-explorer', name: 'Privilege API Explorer LAB', version };
 
 export function createHealth({ store, runChecks = defaultChecks, env = process.env, now = () => new Date(), intervalMs = 60_000 }) {
   let last = { state: 'unknown', at: null, runtime: 'offline' };
@@ -13,7 +13,7 @@ export function createHealth({ store, runChecks = defaultChecks, env = process.e
     try {
       const conns = store.list();
       const state = !allPassed(runChecks({ env })) ? 'broken' : conns.length === 0 ? 'needs-setup' : 'ready';
-      last = { state, at: now().toISOString(), runtime: conns.some((c) => c.kind !== 'pingone' || !c.offline) ? 'live' : 'offline' };
+      last = { state, at: now().toISOString(), runtime: conns.length ? 'real' : 'offline' };
     } catch { last = { state: 'unknown', at: now().toISOString(), runtime: 'offline' }; }
   }
   refresh();

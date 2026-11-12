@@ -65,11 +65,11 @@ test('with Live refused: the Mock demo works in full (tools, call, scan, audit),
 test('the guards: Live needs the owner opt-in and a loopback bind (or the container opt-in)', () => {
   assert.deepEqual(liveGuards({}).map((g) => [g.id, g.ok]), [['owner-opt-in', false], ['loopback-bind', true]]);
   assert.equal(liveRefusal({ [MODE_KEY]: 'live' }), null);
-  assert.deepEqual(liveRefusal({ [MODE_KEY]: 'live', P1MCP_BIND: '0.0.0.0', P1MCP_CONTAINER: '1' }), null, 'the container sets both and is published on loopback only');
-  assert.deepEqual(liveRefusal({ [MODE_KEY]: 'live', P1MCP_BIND: '127.0.0.1' }), null, 'an explicit loopback bind is fine on a host');
-  for (const bind of ['0.0.0.0', '::', '192.0.2.1']) assert.deepEqual(liveRefusal({ [MODE_KEY]: 'live', P1MCP_BIND: bind })?.failed, ['loopback-bind'], `a host run bound to ${bind} is refused for Live`);
-  assert.deepEqual(liveRefusal({ [MODE_KEY]: 'live', P1MCP_BIND: '0.0.0.0', P1MCP_CONTAINER: '0' })?.failed, ['loopback-bind'], 'only the exact marker 1 counts');
-  assert.deepEqual(liveRefusal({ [MODE_KEY]: 'live', P1MCP_CONTAINER: '1' }), null, 'the marker without a wide bind changes nothing');
+  assert.deepEqual(liveRefusal({ [MODE_KEY]: 'live', PAE_BIND: '0.0.0.0', PAE_CONTAINER: '1' }), null, 'the container sets both and is published on loopback only');
+  assert.deepEqual(liveRefusal({ [MODE_KEY]: 'live', PAE_BIND: '127.0.0.1' }), null, 'an explicit loopback bind is fine on a host');
+  for (const bind of ['0.0.0.0', '::', '192.0.2.1']) assert.deepEqual(liveRefusal({ [MODE_KEY]: 'live', PAE_BIND: bind })?.failed, ['loopback-bind'], `a host run bound to ${bind} is refused for Live`);
+  assert.deepEqual(liveRefusal({ [MODE_KEY]: 'live', PAE_BIND: '0.0.0.0', PAE_CONTAINER: '0' })?.failed, ['loopback-bind'], 'only the exact marker 1 counts');
+  assert.deepEqual(liveRefusal({ [MODE_KEY]: 'live', PAE_CONTAINER: '1' }), null, 'the marker without a wide bind changes nothing');
   assert.deepEqual(liveRefusal({ [MODE_KEY]: 'mock' }).failed, ['owner-opt-in']);
   assert.deepEqual(liveRefusal({ MODE: 'live' }).failed, ['owner-opt-in'], 'a bare MODE is never read');
 });
@@ -96,7 +96,7 @@ test('modeFrom: mock by default, live only when asked, anything else is an error
 test('the shared settings file: only the listed keys are taken, nothing else enters the environment, no file means defaults', () => {
   const dir = tmpDir(); const file = path.join(dir, '.env');
   fs.writeFileSync(file, `${MODE_KEY}=live\nPINGONE_ENVIRONMENT_ID=${ENV_ID}\nPINGONE_REGION=eu\nPINGONE_CLIENT_SECRET=do-not-take\nMODE=live\nPORT=1\nOTHER_APP_KEY=x\n`, { mode: 0o600 });
-  assert.deepEqual(SETTINGS_KEYS.sort(), ['PINGONE_ENVIRONMENT_ID', 'PINGONE_MCP_INSPECTOR_MODE', 'PINGONE_REGION']);
+  assert.deepEqual(SETTINGS_KEYS.sort(), ['PINGONE_ENVIRONMENT_ID', 'PRIVILEGE_EXPLORER_MODE', 'PINGONE_REGION']);
   assert.deepEqual(Object.keys(readSharedSettings(file)).sort(), SETTINGS_KEYS);
   const env = applySharedSettings({ PINGONE_REGION: 'asia' }, file);
   assert.equal(env.PINGONE_REGION, 'asia', 'the environment wins over the file');
@@ -109,7 +109,7 @@ test('the shared settings file: only the listed keys are taken, nothing else ent
 test('the shared settings file can supply the PingOne preset with an environment id and region, never a client id or secret', async () => {
   const dir = tmpDir(); const file = path.join(dir, 'worker.env');
   fs.writeFileSync(file, 'PINGONE_CLIENT_ID=worker-1\nPINGONE_CLIENT_SECRET=sentinel-secret-xyz\n', { mode: 0o600 });
-  const t = await startApp({ env: { P1MCP_WORKER_ENV_FILE: file, PINGONE_ENVIRONMENT_ID: ENV_ID, PINGONE_REGION: 'eu' } });
+  const t = await startApp({ env: { PAE_WORKER_ENV_FILE: file, PINGONE_ENVIRONMENT_ID: ENV_ID, PINGONE_REGION: 'eu' } });
   try {
     const r = await t.call('POST', '/api/presets/pingone');
     assert.equal(r.status, 201, r.text); assert.equal(r.json.envId, ENV_ID); assert.equal(r.json.region, 'eu'); assert.equal(r.json.clientSecret, 'set');

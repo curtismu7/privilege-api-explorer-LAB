@@ -6,7 +6,7 @@ import { installNetguard } from './netguard.js';
 import { applySharedSettings } from './settings.js';
 import { assertBindAllowed, bindHost } from './security.js';
 
-// Boot on `port` (0 = ephemeral). Refuses a non-loopback host unless P1MCP_BIND is set.
+// Boot on `port` (0 = ephemeral). Refuses a non-loopback host unless PAE_BIND is set.
 export function startHttpServer({ port = configPort(), host = bindHost(), app = createApp() } = {}) {
   assertBindAllowed(host);
   return new Promise((resolve, reject) => {
@@ -24,10 +24,10 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   installNetguard(); // zero outbound by default; before anything else can open a socket. Live takes a permit per host (app.js).
   const checks = runChecks();
   if (!allPassed(checks)) {
-    for (const c of checks.filter((x) => x.level === 'fail')) console.error(`[p1mcp] refusing to start: ${c.id}: ${c.detail}`);
+    for (const c of checks.filter((x) => x.level === 'fail')) console.error(`[pae] refusing to start: ${c.id}: ${c.detail}`);
     process.exit(1);
   }
   const { url } = await startHttpServer();
-  console.log(`[p1mcp] listening on ${url} (loopback unless P1MCP_BIND is set)`);
+  console.log(`[pae] listening on ${url} (loopback unless PAE_BIND is set)`);
   process.on('SIGTERM', () => process.exit(0));
 }

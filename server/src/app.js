@@ -1,30 +1,25 @@
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import express from 'express';
-import { createAuth } from './auth.js';
-import { annotate } from './classify.js';
-import { analyze, LIMITS, RULES } from './scanner/index.js';
-import { MODES, MODE_KEY, dataDir as cfgDataDir, liveRefusal, modeFrom, webDist } from './config.js';
+import { buildRequest, createClient, CLASS_BY_METHOD } from './client.js';
+import { MODES, MODE_KEY, dataDir as cfgDataDir, realRefusal, modeFrom, webDist } from './config.js';
+import catalog from './spec-catalog.json' with { type: 'json' };
 import { createDiagrams, DIAGRAM_DIR } from './diagrams.js';
-import { createAudit, decide, argsHash } from './gate.js';
 import { createHealth } from './health.js';
-import { createMcpClient } from './mcpClient.js';
 import { createMock } from './mock.js';
 import { permit } from './netguard.js';
-import { scrub, scrubJson } from './redact.js';
+import { clip, scrub, scrubJson } from './redact.js';
 import { hostCheck, isLoopbackHost, labAllowedHosts, sameOriginWrites } from './security.js';
 import { createStore } from './store.js';
-import { validateArgs } from './validate.js';
-import { liveHosts, mcpUrl } from './urls.js';
+import { liveHosts } from './urls.js';
 import { shelfInfo } from './shelfLink.js';
 
-const RAW_FREE = new Set(['initialize', 'ping', 'tools/list', 'resources/list', 'resources/read', 'resources/templates/list', 'prompts/list', 'prompts/get']);
-const CALLBACK_PATHS = new Set(['/api/oauth/callback', '/callback']);
-const isMock = (c) => c.kind === 'pingone' && c.offline === true;
-const HINT_SHORT = 'A short list usually means missing admin roles, not a broken server (from the pingone-mcp skill; this tool has not verified it against a live tenant).';
+// ReDoS-safe search: plain substring match on lowercased strings, no user regex.
+const HAY = (o) => `${o.method} ${o.path} ${o.tag} ${o.summary} ${o.opId || ''}`.toLowerCase();
+const OPS = catalog.operations.map((o, i) => ({ id: `op-${i + 1}`, ...o, klass: CLASS_BY_METHOD[o.method] || 'write' }));
+const OPS_BY_ID = new Map(OPS.map((o) => [o.id, o]));
 
-export function createApp({ env = process.env, lab = labAllowedHosts(env), store, mock, fetchImpl = fetch, now = Date.now, diagramsDir = DIAGRAM_DIR } = {}) {
+export function createApp({ env = process.env, lab = labAllowedHosts(env), store, mock, now = Date.now, fetchImpl = fetch, diagramsDir = DIAGRAM_DIR } = {}) {
   const diagrams = createDiagrams({ dir: diagramsDir }); // diagram-studio/1 data, validated now: an invalid file stops the app from starting
   const dir = cfgDataDir(env);
   store ||= createStore({ dir });
@@ -32,40 +27,44 @@ export function createApp({ env = process.env, lab = labAllowedHosts(env), store
   const theMock = mock || createMock();
   let mockStarted = Boolean(mock?.base);
   const ensureMock = async () => { if (!mockStarted) { await theMock.start(); mockStarted = true; } };
-  const offlineBase = (c) => (c.kind === 'pingone' && c.offline ? theMock.base : null);
-  const auth = createAuth({ resolveBase: offlineBase, fetchImpl, now });
+  const callPrivilege = createClient({ fetchImpl });
   const health = createHealth({ store, env });
-  // Live is refused unless every guard in config.js passes. A saved connection to anything but the in-process mock is Live.
-  const liveGate = liveRefusal(env);
-  const refuseLive = (res) => res.status(403).json({ error: 'live_refused', message: `Live is refused: ${liveGate.failed.join(', ')}. ${liveGate.needs.join(' ')}`, failed: liveGate.failed, needs: liveGate.needs });
-  // A short-lived permit for each host the connection can reach, held while one operation on it runs (see netguard.js).
+  // Real is refused unless every guard in config.js passes. A saved connection is always Real.
+  const realGate = realRefusal(env);
+  const refuseReal = (res) => res.status(403).json({ error: 'real_refused', message: `Real is refused: ${realGate.failed.join(', ')}. ${realGate.needs.join(' ')}`, failed: realGate.failed, needs: realGate.needs });
+  // A short-lived permit for the connection's console host, held while one operation on it runs (see netguard.js).
   async function withPermits(conn, fn) {
     const releases = liveHosts(conn).map((host) => permit(host));
-    try { return await fn(); } finally { for (const r of releases) r(); }
+    try { return await fn(); } catch (err) {
+      if (conn.insecureTls && err?.code === 'UNABLE_TO_VERIFY_LEAF_SIGNATURE') err.message = 'the console certificate is not trusted: enable "self-signed certificate" on the connection';
+      throw err;
+    } finally { for (const r of releases) r(); }
   }
 
-  const secretsFor = (conn) => [...store.secretsOf(conn), ...auth.allSecrets()];
-  const view = (c) => ({ ...store.publicView(c), auth_status: auth.status(c) });
-
-  function clientFor(conn) {
-    if (conn.kind === 'pingone') {
-      return createMcpClient({
-        url: mcpUrl({ ...conn, offlineBase: offlineBase(conn) }), fetchImpl,
-        getAuth: async () => ['Authorization', `Bearer ${await auth.accessToken(conn)}`],
-        refreshAuth: () => auth.renew(conn),
-      });
-    }
-    return createMcpClient({ url: conn.url, fetchImpl, handshake: true, getAuth: async () => (conn.token ? [conn.authHeader || 'Authorization', conn.token] : null) });
-  }
+  const secretsFor = (conn) => store.secretsOf(conn);
+  const view = (c) => store.publicView(c);
 
   function fail(res, conn, err) {
-    const secrets = conn ? secretsFor(conn) : auth.allSecrets();
+    const secrets = conn ? secretsFor(conn) : [];
     const message = scrub(err?.message || 'error', secrets).slice(0, 300);
     const code = err?.code || 'internal_error';
-    const status = code === 'login_required' ? 401 : code === 'mcp_timeout' ? 504 : /^(mcp_|token_|jwks_)/.test(code) ? 502 : code === 'bad_request' ? 400 : 500;
+    const status = code === 'login_required' ? 401 : code === 'writes_disabled' ? 403 : code === 'bad_request' ? 400 : err?.cause?.code === 'ENOTFOUND' || err?.cause?.code === 'ECONNREFUSED' ? 502 : 500;
     const body = { error: String(code), message: status === 500 && !err?.code ? 'internal error' : message };
     if (err?.httpStatus) body.upstreamStatus = err.httpStatus;
     return res.status(status).json(body);
+  }
+
+  // History: every call, real or mock, in memory and on disk (mode 600 file, redacted).
+  function createAudit({ dir: d }) {
+    const file = path.join(d, 'audit.jsonl');
+    const recent = [];
+    try { for (const line of fs.readFileSync(file, 'utf8').split('\n').slice(-500)) { if (!line.trim()) continue; try { recent.push(JSON.parse(line)); } catch { /* skip */ } } } catch { /* none yet */ }
+    const persist = (e) => { try { fs.mkdirSync(d, { recursive: true, mode: 0o700 }); fs.appendFileSync(file, `${JSON.stringify(e)}\n`, { mode: 0o600 }); } catch { /* best effort */ } };
+    return {
+      recent: () => recent.slice(-200).reverse(),
+      record(e) { const full = { ...e, at: new Date(now()).toISOString() }; recent.push(full); if (recent.length > 500) recent.splice(0, recent.length - 500); persist(full); },
+      clear() { recent.length = 0; try { fs.rmSync(file, { force: true }); } catch { /* best effort */ } },
+    };
   }
 
   const app = express();
@@ -75,44 +74,42 @@ export function createApp({ env = process.env, lab = labAllowedHosts(env), store
   app.use(express.json({ limit: '200kb' }));
   app.use('/api/health', health.router);
 
-  // noNetwork: the route only edits local state, so it stays available when Live is refused (an owner can always delete or lock down).
-  const h = (fn, { noNetwork = false } = {}) => async (req, res) => {
+  const h = (fn) => async (req, res) => {
     const conn = req.params.id ? store.get(req.params.id) : null;
     if (req.params.id && !conn) return res.status(404).json({ error: 'not_found', message: 'no such connection' });
-    if (conn && !noNetwork && !isMock(conn) && liveGate) return refuseLive(res);
+    if (conn && realGate) return refuseReal(res);
     try {
-      if (conn && isMock(conn)) await ensureMock();
       await withPermits(conn, () => fn(req, res, conn));
     } catch (err) { fail(res, conn, err); }
   };
 
-  // ---- mode: what the header toggle may do. Rule 19: the server-side Mock/Real mode. The page opens in the
-  // owner's requested mode; POST /api/mode switches for this run. Real is only available when every Live guard passes.
-  let runMode = modeFrom(env); // 'mock' | 'live'
+  // ---- mode: what the header toggle may do. Rule 19: the server-side Mock/Real mode. POST /api/mode switches for
+  // this run. Real is only available when every Real guard passes.
+  let runMode = modeFrom(env); // 'mock' | 'real'
   const modeView = () => ({
-    source: runMode === 'live' ? 'real' : 'mock',
-    realAvailable: !liveGate,
-    realReason: liveGate ? `Live is refused: ${liveGate.failed.join(', ')}. ${liveGate.needs.join(' ')}` : null,
+    source: runMode === 'real' ? 'real' : 'mock',
+    realAvailable: !realGate,
+    realReason: realGate ? `Real is refused: ${realGate.failed.join(', ')}. ${realGate.needs.join(' ')}` : null,
   });
   app.post('/api/mode', (req, res) => {
     const source = req.body?.source;
     if (source !== 'mock' && source !== 'real') return res.status(400).json({ error: 'bad_request', message: 'source must be exactly "mock" or "real"' });
-    if (source === 'real' && liveGate) return res.status(409).json({ error: 'real_not_available', message: modeView().realReason });
-    runMode = source === 'real' ? 'live' : 'mock';
+    if (source === 'real' && realGate) return res.status(409).json({ error: 'real_not_available', message: modeView().realReason });
+    runMode = source === 'real' ? 'real' : 'mock';
     res.json(modeView());
   });
   app.get('/api/info', (_req, res) => {
     res.set('Cache-Control', 'no-store');
-    res.json({ mode: runMode, ...modeView(), modes: [...MODES], key: MODE_KEY, requested: modeFrom(env), live: { available: !liveGate, failed: liveGate?.failed ?? [], needs: liveGate?.needs ?? [] } });
+    res.json({ mode: runMode, ...modeView(), modes: [...MODES], key: MODE_KEY, requested: modeFrom(env), real: { available: !realGate, failed: realGate?.failed ?? [], needs: realGate?.needs ?? [] } });
   });
 
-  // Reset: run state goes back to the start (audit history, tokens, half-finished sign-ins, writes off, the mock's fake tenant). Saved
-  // connections and their secrets are kept. The page also puts the diagram boxes back.
+  // Reset: run state goes back to the start (audit history, the mock's fake tenant, writes off). Saved connections
+  // and their secrets are kept. The page also puts the diagram boxes back.
   app.post('/api/reset', (_req, res) => {
-    audit.clear(); auth.resetAll(); const writesOff = store.resetWrites();
+    audit.clear(); const writesOff = store.resetWrites();
     if (mockStarted) theMock.reset();
     health.refresh();
-    res.json({ ok: true, cleared: ['audit', 'tokens', 'pending sign-ins', 'mock tenant'], writesTurnedOff: writesOff, kept: ['connections'] });
+    res.json({ ok: true, cleared: ['audit history', 'mock tenant'], writesTurnedOff: writesOff, kept: ['connections'] });
   });
 
   // ---- diagrams: diagram-studio/1 data served by name from a fixed allow-list. An unknown name is a JSON 404 that does not echo the input.
@@ -127,137 +124,77 @@ export function createApp({ env = process.env, lab = labAllowedHosts(env), store
   // ---- connections
   app.get('/api/connections', (_req, res) => res.json({ connections: store.list().map(view) }));
   app.post('/api/connections', (req, res) => {
-    const wantsMock = req.body?.kind === 'pingone' && req.body?.offline === true;
-    if (!wantsMock && liveGate) return refuseLive(res);
+    if (realGate) return refuseReal(res);
     try { const c = store.create(req.body || {}); health.refresh(); res.status(201).json(view(c)); }
-    catch (err) { res.status(400).json({ error: 'bad_request', message: scrub(err.message, [req.body?.clientSecret, req.body?.token]) }); }
+    catch (err) { res.status(400).json({ error: 'bad_request', message: scrub(err.message, [req.body?.apiSecret]) }); }
   });
-  // One-click presets. 'pingone' reads the worker from a LOCAL file outside the repo (P1MCP_WORKER_ENV_FILE), never from the repo.
-  const PRESETS = {
-    banking: () => ({ kind: 'custom', label: 'Banking MCP (local)', url: env.P1MCP_BANKING_URL || 'http://localhost:9901/mcp' }),
-    opensearch: () => ({ kind: 'custom', label: 'OpenSearch MCP (local)', url: env.P1MCP_OPENSEARCH_URL || 'http://localhost:9900/mcp' }),
-    pingone: () => {
-      const file = env.P1MCP_WORKER_ENV_FILE || path.join(os.homedir(), '.config', 'pingone-mcp-inspector', 'worker.env');
-      let txt; try { txt = fs.readFileSync(file, 'utf8'); } catch { const e = new Error(`Create ${file} with PINGONE_ENV_ID, PINGONE_REGION, PINGONE_CLIENT_ID and PINGONE_CLIENT_SECRET (see .env.example), then try again.`); e.needsSetup = true; throw e; }
-      const v = Object.fromEntries(txt.split('\n').filter((l) => l.trim() && !l.startsWith('#')).map((l) => { const i = l.indexOf('='); return [l.slice(0, i).trim(), l.slice(i + 1).trim()]; }));
-      // The environment id and region may come from the shared settings file (PINGONE_ENVIRONMENT_ID, PINGONE_REGION); the worker's client id and secret never do.
-      const envId = v.PINGONE_ENV_ID || env.PINGONE_ENVIRONMENT_ID;
-      if (!envId || !v.PINGONE_CLIENT_ID || !v.PINGONE_CLIENT_SECRET) { const e = new Error(`${file} must set PINGONE_CLIENT_ID and PINGONE_CLIENT_SECRET (and PINGONE_ENV_ID unless PINGONE_ENVIRONMENT_ID is in the shared settings file).`); e.needsSetup = true; throw e; }
-      return { kind: 'pingone', label: 'PingOne standalone worker', region: v.PINGONE_REGION || env.PINGONE_REGION || 'com', envId, auth: 'worker', endpointStyle: v.PINGONE_ENDPOINT_STYLE || 'mcp-host', clientId: v.PINGONE_CLIENT_ID, clientSecret: v.PINGONE_CLIENT_SECRET };
-    },
-  };
-  app.post('/api/presets/:id', (req, res) => {
-    const make = Object.hasOwn(PRESETS, req.params.id) ? PRESETS[req.params.id] : null;
-    if (!make) return res.status(404).json({ error: 'unknown_preset', message: 'No such preset.' });
-    if (liveGate) return refuseLive(res);
-    let body; try { body = make(); } catch (err) { return res.status(err.needsSetup ? 409 : 500).json({ error: 'needs_setup', message: err.message }); }
-    try { const c = store.create(body); health.refresh(); res.status(201).json(view(c)); }
-    catch (err) { res.status(400).json({ error: 'bad_request', message: scrub(err.message, [body.clientSecret]) }); }
-  });
-  app.delete('/api/connections/:id', h((_req, res, conn) => { auth.logout(conn); store.remove(conn.id); health.refresh(); res.json({ ok: true }); }, { noNetwork: true }));
-  app.post('/api/connections/:id/settings', h((req, res, conn) => res.json(view(store.update(conn.id, { allowWrites: req.body?.allowWrites }))), { noNetwork: true }));
+  app.delete('/api/connections/:id', h((_req, res, conn) => { store.remove(conn.id); health.refresh(); res.json({ ok: true }); }));
+  app.post('/api/connections/:id/settings', h((req, res, conn) => res.json(view(store.update(conn.id, { allowWrites: req.body?.allowWrites })))));
 
-  app.post('/api/connections/:id/role', h((req, res, conn) => {
-    if (!conn.offline || conn.auth !== 'worker' || !['viewer', 'admin'].includes(req.body?.role)) return res.status(400).json({ error: 'bad_request', message: 'the role switch exists only on an offline worker demo connection (role: viewer or admin)' });
-    auth.logout(conn);
-    res.json(view(store.update(conn.id, { clientId: `${req.body.role}-demo` })));
-  }));
-
-  // ---- tools, health card
-  async function listAnnotated(conn) { return annotate(await clientFor(conn).listTools()); }
-  app.get('/api/connections/:id/tools', h(async (_req, res, conn) => {
-    const tools = scrubJson(await listAnnotated(conn), secretsFor(conn));
-    const byClass = { read: 0, write: 0, destructive: 0 };
-    const areas = {};
-    for (const t of tools) { byClass[t.class]++; (areas[t.area] ||= []).push(t.name); }
-    res.json({ count: tools.length, byClass, areas, tools });
-  }));
-  // Scan this server's tool metadata (rule table copied from mcp-tools). Reads tools/list only; never calls a tool, never blocks anything.
-  app.post('/api/connections/:id/scan', h(async (_req, res, conn) => {
-    const tools = await clientFor(conn).listTools();
-    const { findings, truncated } = analyze({ tools });
-    const summary = { info: 0, warn: 0, high: 0, total: findings.length };
-    for (const f of findings) summary[f.severity]++;
-    res.json(scrubJson({
-      scanner: { source: 'mcp-tools rule table (copied)', enforcement: 'none' }, tools: tools.length, truncated, summary, findings,
-      rules: Object.fromEntries(Object.entries(RULES).map(([id, r]) => [id, r.title])), limits: LIMITS,
-      ...(conn.offline ? { fixture: 'illustrative sample, not a recording' } : {}),
-    }, secretsFor(conn)));
-  }));
+  // Connection check: one cheap real GET against the console to prove the credential works.
   app.post('/api/connections/:id/test', h(async (_req, res, conn) => {
+    const probe = OPS.find((o) => o.method === 'GET' && o.path === '/api/{ObjectMeta.Tenant}/v1/users') || OPS.find((o) => o.method === 'GET');
     try {
-      const tools = await listAnnotated(conn);
-      const out = { ok: true, toolCount: tools.length, byClass: { read: 0, write: 0, destructive: 0 } };
-      for (const t of tools) out.byClass[t.class]++;
-      if (conn.kind === 'pingone') {
-        out.expectedNote = 'A fully privileged Worker app is said to see about 60-70 tools (pingone-mcp skill; UNVERIFIED by this tool).';
-        if (tools.length < 40) out.hint = HINT_SHORT;
-      }
-      if (conn.offline) out.fixture = 'illustrative sample, not a recording';
-      res.json(out);
+      const built = buildRequest(probe, {}, { tenant: conn.tenant });
+      const t0 = Date.now();
+      const out = await callPrivilege(conn, { method: 'GET', path: built.path });
+      audit.record({ conn: view(conn), op: 'connection-test', outcome: 'ok', status: out.status, ms: Date.now() - t0 });
+      res.json({ ok: true, status: out.status, ms: Date.now() - t0, probed: built.path });
     } catch (err) {
-      if (err?.code === 'login_required') throw err;
-      const e = { ok: false, error: String(err?.code || 'error'), message: scrub(err?.message, secretsFor(conn)).slice(0, 300) };
-      if (err?.httpStatus === 401 || err?.httpStatus === 403) e.hint = 'The server refused the credential. For PingOne: check the client, environment and region, and the admin roles on the identity (UNVERIFIED: which of these is the cause on a live tenant).';
-      res.json(e);
+      const ok = false;
+      const message = err.code === 'login_required' ? err.message : scrub(err.message || 'error', secretsFor(conn)).slice(0, 300);
+      audit.record({ conn: view(conn), op: 'connection-test', outcome: err.code === 'login_required' ? 'refused' : 'error', status: err.httpStatus, note: err.code });
+      res.json({ ok, error: String(err.code || 'error'), message });
     }
   }));
 
-  // ---- gated call (shared by /call and raw tools/call)
-  async function gatedCall(conn, { tool, arguments: args, confirm, argsHash: hash, typedName }) {
-    const secrets = secretsFor(conn);
-    const a = args && typeof args === 'object' && !Array.isArray(args) ? args : {};
-    if (typeof tool !== 'string' || !tool) return { status: 400, body: { error: 'bad_request', message: 'tool is required' } };
-    const entry = (await listAnnotated(conn)).find((t) => t.name === tool);
-    if (!entry) { audit.record({ conn, tool, outcome: 'blocked:tool_not_listed', args: a }, secrets); return { status: 404, body: { error: 'tool_not_listed', message: 'this identity does not see that tool (the list is gated by role)' } }; }
-    const verdict = decide({ cls: entry.class, allowWrites: conn.allowWrites, connId: conn.id, tool, args: a, confirm, hash, typedName });
-    const warnings = validateArgs(entry.inputSchema, a);
-    if (!verdict.ok) {
-      audit.record({ conn, tool, cls: entry.class, outcome: `blocked:${verdict.error}`, args: a, hash: argsHash(conn.id, tool, a) }, secrets);
-      const { ok, status, ...body } = verdict;
-      return { status, body: scrubJson({ ...body, class: entry.class, warnings }, secrets) };
-    }
+  // ---- the API catalog: full swagger surface, searchable
+  app.get('/api/spec', (req, res) => {
+    res.set('Cache-Control', 'no-store');
+    const q = String(req.query.q ?? '').trim().toLowerCase().slice(0, 120);
+    const tag = String(req.query.tag ?? '').trim().slice(0, 80);
+    const method = String(req.query.method ?? '').trim().toUpperCase();
+    let ops = OPS;
+    if (tag) ops = ops.filter((o) => o.tag === tag);
+    if (['GET', 'POST', 'PUT', 'DELETE', 'PATCH'].includes(method)) ops = ops.filter((o) => o.method === method);
+    // Substring search across method, path, tag, summary, operationId. "pi" matches every /api/... path (they all
+    // start with "get /api/"), so a bare common term is not useful on its own — the UI hints that; tag/method filters
+    // narrow it. Substring, not prefix: "users" matches listUsers too.
+    if (q) ops = ops.filter((o) => HAY(o).includes(q));
+    const tags = [...new Set(OPS.map((o) => o.tag))].sort((a, b) => a.localeCompare(b));
+    const byMethod = {};
+    for (const o of ops) byMethod[o.method] = (byMethod[o.method] || 0) + 1;
+    res.json({ total: OPS.length, matched: ops.length, byMethod, tags, operations: ops.map((o) => ({ ...o, summary: clip(o.summary, 160) })) });
+  });
+  app.get('/api/spec/ops/:id', (req, res) => {
+    const op = OPS_BY_ID.get(String(req.params.id));
+    if (!op) return res.status(404).json({ error: 'unknown_operation', message: 'No such operation in the catalog.' });
+    res.set('Cache-Control', 'no-store');
+    res.json(op);
+  });
+
+  // ---- the call proxy: one operation against one connection, real or mock. Read-only by default; writes gated.
+  app.post('/api/connections/:id/call', h(async (req, res, conn) => {
+    const { opId, values, body } = req.body || {};
+    const op = OPS_BY_ID.get(String(opId || ''));
+    if (!op) { audit.record({ conn: view(conn), op: String(opId || '').slice(0, 60), outcome: 'blocked:unknown_operation' }); return res.status(400).json({ error: 'bad_request', message: 'opId must name a catalog operation' }); }
+    let built;
+    try { built = buildRequest(op, values && typeof values === 'object' ? values : {}, { tenant: conn.tenant }); }
+    catch (err) { audit.record({ conn: view(conn), op: op.opId, outcome: `blocked:${err.code || 'bad_request'}`, note: err.message }); return res.status(400).json({ error: 'bad_request', message: err.message }); }
+    const t0 = Date.now();
     try {
-      const result = await clientFor(conn).rpc('tools/call', { name: tool, arguments: a });
-      audit.record({ conn, tool, cls: entry.class, outcome: 'ok', args: a, hash: argsHash(conn.id, tool, a) }, secrets);
-      return { status: 200, body: { class: entry.class, warnings, result: scrubJson(result, secretsFor(conn)) } };
+      const out = await callPrivilege(conn, { method: op.method, path: built.path, body: op.method === 'GET' || op.method === 'DELETE' ? undefined : (body ?? {}) });
+      const ms = Date.now() - t0;
+      audit.record({ conn: view(conn), op: op.opId, path: built.path, outcome: out.status < 400 ? 'ok' : `upstream:${out.status}`, status: out.status, ms });
+      res.status(200).json({ status: out.status, ms, path: built.path, sessionId: out.sessionId, body: scrubJson(out.body, secretsFor(conn)) });
     } catch (err) {
-      audit.record({ conn, tool, cls: entry.class, outcome: 'error', args: a, hash: argsHash(conn.id, tool, a), note: err?.code }, secrets);
+      const ms = Date.now() - t0;
+      audit.record({ conn: view(conn), op: op.opId, path: built.path, outcome: err.code === 'login_required' ? 'refused' : 'error', status: err.httpStatus, ms, note: err.code });
       throw err;
     }
-  }
-  app.post('/api/connections/:id/call', h(async (req, res, conn) => { const r = await gatedCall(conn, req.body || {}); res.status(r.status).json(r.body); }));
-  app.post('/api/connections/:id/rpc', h(async (req, res, conn) => {
-    const { method, params } = req.body || {};
-    if (method === 'tools/call') { const r = await gatedCall(conn, { ...(params || {}), tool: params?.name, confirm: req.body.confirm, argsHash: req.body.argsHash, typedName: req.body.typedName }); return res.status(r.status).json(r.body); }
-    if (!RAW_FREE.has(method)) return res.status(403).json({ error: 'method_not_allowed', message: `raw console allows: ${[...RAW_FREE].join(', ')} and tools/call (through the gate)` });
-    const result = await clientFor(conn).rpc(method, params && typeof params === 'object' ? params : {});
-    res.json({ result: scrubJson(result, secretsFor(conn)) });
   }));
 
-  // ---- interactive login
-  app.post('/api/connections/:id/login/start', h((req, res, conn) => {
-    let u; try { u = new URL(conn.redirectUri); } catch { u = null; }
-    const hostPort = String(req.headers.host || '').split(':').pop();
-    if (!u || u.protocol !== 'http:' || !isLoopbackHost(u.hostname) || !CALLBACK_PATHS.has(u.pathname) || u.port !== hostPort || u.search || u.hash) {
-      return res.status(400).json({ error: 'redirect_uri_invalid', message: `redirectUri must be http://localhost:${hostPort}/api/oauth/callback (or /callback), exactly as registered on your OAuth application.` });
-    }
-    res.json({ authorizeUrl: auth.startLogin(conn).authorizeUrl });
-  }));
-  const callback = async (req, res) => {
-    const at = `http://${req.headers.host}${req.path}`;
-    let location;
-    try {
-      const pendingConn = store.get(auth.pendingConnId(String(req.query.state ?? '')));
-      if (pendingConn && !isMock(pendingConn) && liveGate) throw Object.assign(new Error('live is refused'), { code: 'live_refused' });
-      if (pendingConn && isMock(pendingConn)) await ensureMock();
-      const r = await withPermits(pendingConn, () => auth.completeLogin({ q: req.query, at, getConn: (id) => store.get(id) })); location = `/?login=ok&connection=${encodeURIComponent(r.connId)}`; }
-    catch (err) { location = `/?login=error&reason=${encodeURIComponent(String(err.code || 'error'))}`; }
-    res.redirect(302, location);
-  };
-  for (const p of CALLBACK_PATHS) app.get(p, callback);
-  app.post('/api/connections/:id/logout', h((_req, res, conn) => { auth.logout(conn); res.json({ ok: true }); }, { noNetwork: true }));
-
+  // ---- audit + mock call log (evidence for the UI)
   app.get('/api/audit', (_req, res) => res.json({ entries: audit.recent() }));
   app.get('/api/shelf', (_req, res) => { res.set('Cache-Control', 'no-store'); res.json(shelfInfo()); }); // the header "Shelf" button
 
@@ -271,7 +208,7 @@ export function createApp({ env = process.env, lab = labAllowedHosts(env), store
     return res.status(500).json({ error: 'internal_error', message: 'internal error' });
   });
 
-  app.locals.store = store; app.locals.auth = auth; app.locals.audit = audit; app.locals.mock = theMock;
+  app.locals.store = store; app.locals.audit = audit; app.locals.mock = theMock;
   app.locals.close = async () => { health.stop(); if (!mock && mockStarted) await theMock.stop(); };
   return app;
 }

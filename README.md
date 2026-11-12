@@ -1,9 +1,9 @@
-# PingOne MCP Inspector LAB
+# Privilege API Explorer LAB
 
 A standalone app that connects to PingOne's hosted MCP server (the admin plane) or any HTTP MCP server, lists its tools with a safety class, and calls them. Read-only by default. Mock by default; Live is owner-run.
 
 Tier: Tester
-Repo: https://github.com/curtismu7/pingone-mcp-inspector-LAB
+Repo: https://github.com/curtismu7/privilege-api-explorer-LAB
 Catalog: D3
 
 > **Nothing here has been run against a real PingOne tenant.** Everything below was run against in-process stubs only: a mock of PingOne's authorization server and hosted MCP server, and a stub poisoned server. The header has a **Mock / Live** toggle and shows the mode; **Live is refused** until the owner opts in, and the banner on every tab, presenter mode included, names the mode. The owner-run checklist for a real tenant is [docs/live-checks.md](docs/live-checks.md).
@@ -12,7 +12,7 @@ Catalog: D3
 
 **Mock mode (the default, and the only mode that runs with no setup).** The mock demo talks to an in-process mock of PingOne's hosted MCP server and authorization server on this machine, with roles `viewer` and `admin` that gate the tool list. The tool catalog is an illustrative sample, not a recording, and its write tools change only an in-memory fake tenant. A stub poisoned server (in the tests and the e2e) exercises the scan. Nothing leaves this machine: a netguard refuses every non-loopback socket, DNS lookup, fetch and UDP send, and a test asserts zero attempts over a whole Mock session. The banner says the same.
 
-**Live mode (owner-run).** The saved connection you use talks to a real server: your own PingOne environment (a worker application, or an interactive admin sign-in with authorization code + PKCE) or any HTTP MCP server you name. Live acts on that server with the credentials you saved. It is refused until the owner sets `PINGONE_MCP_INSPECTOR_MODE=live` (see "Mock and live modes"), and even then the netguard lets a connection reach only its own hosts. Not run against a real tenant here: the endpoint shape a tenant answers on, the scopes and consent of the interactive login, and the tool count for a fully privileged worker are UNVERIFIED.
+**Live mode (owner-run).** The saved connection you use talks to a real server: your own PingOne environment (a worker application, or an interactive admin sign-in with authorization code + PKCE) or any HTTP MCP server you name. Live acts on that server with the credentials you saved. It is refused until the owner sets `PRIVILEGE_EXPLORER_MODE=live` (see "Mock and live modes"), and even then the netguard lets a connection reach only its own hosts. Not run against a real tenant here: the endpoint shape a tenant answers on, the scopes and consent of the interactive login, and the tool count for a fully privileged worker are UNVERIFIED.
 
 Product source: earlier PingOne MCP work and the `pingone-mcp` skill. Only ideas and endpoint shapes were taken; the code here shares nothing with them.
 
@@ -21,8 +21,8 @@ Product source: earlier PingOne MCP work and the `pingone-mcp` skill. Only ideas
 Prerequisites: Node 26 or newer (`.nvmrc` says 26). Docker only for the Docker form.
 
 ```bash
-git clone https://github.com/curtismu7/pingone-mcp-inspector-LAB.git
-cd pingone-mcp-inspector-LAB
+git clone https://github.com/curtismu7/privilege-api-explorer-LAB.git
+cd privilege-api-explorer-LAB
 npm ci
 npm run doctor      # node, mode, bind, data directory, port range, netguard self-test, free port
 npm run build       # builds web/dist, which the server serves itself
@@ -45,15 +45,15 @@ All standalone apps read one settings file, `~/Development/.env` (mode 600). `ST
 
 | Key | Required | What it does |
 | --- | --- | --- |
-| `PINGONE_MCP_INSPECTOR_MODE` | optional | `mock` (the default) keeps Live refused. `live` is the owner's opt-in that lets the header toggle go to Live. The page opens in Mock either way. Anything else stops the server with an error. |
+| `PRIVILEGE_EXPLORER_MODE` | optional | `mock` (the default) keeps Live refused. `live` is the owner's opt-in that lets the header toggle go to Live. The page opens in Mock either way. Anything else stops the server with an error. |
 | `PINGONE_ENVIRONMENT_ID` | optional | Default environment id for the "Add PingOne worker" preset (Live only). Not a secret. |
 | `PINGONE_REGION` | optional | Default region (`com`, `eu`, `asia`, `ca`) for the same preset. |
 
-No admin or worker credential belongs in this file, and none is read from it. The saved connections (including a worker client secret, which is write-only) live in the app's own owner-only folder (`.data`, or `P1MCP_DATA_DIR`; mode 700, files mode 600). The "Add PingOne worker" preset reads the worker's client id and secret from a separate local file outside the repo (`~/.config/pingone-mcp-inspector/worker.env`, or `P1MCP_WORKER_ENV_FILE`; see `.env.example`). `.env.example` lists every environment variable; the old repo-level `.env` loader is gone. The port is not in the settings file: apps keep their port defaults in code.
+No admin or worker credential belongs in this file, and none is read from it. The saved connections (including a worker client secret, which is write-only) live in the app's own owner-only folder (`.data`, or `PAE_DATA_DIR`; mode 700, files mode 600). The "Add PingOne worker" preset reads the worker's client id and secret from a separate local file outside the repo (`~/.config/privilege-api-explorer/worker.env`, or `PAE_WORKER_ENV_FILE`; see `.env.example`). `.env.example` lists every environment variable; the old repo-level `.env` loader is gone. The port is not in the settings file: apps keep their port defaults in code.
 
 ## Ports, and what to do if the port is taken
 
-Ports: pingone-mcp-inspector listens on 5201 (set with PORT, default 5201).
+Ports: privilege-api-explorer listens on 5201 (set with PORT, default 5201).
 Port range for this app: 5201-5249.
 
 If the port is taken:
@@ -71,7 +71,7 @@ Other ports this app uses, all inside 5201-5249: the Vite dev server on 5202 (`V
 
 - The header has a **Mock / Live** toggle on every page (Connections, Tools, Raw JSON-RPC, Audit, MCP first, Stories, Diagram). It shows the mode as `Mode: mock` or `Mode: live`, and the banner above it says the same ("MOCK mode, simulated." or "LIVE mode, owner-run."). Nothing about the mode is remembered: every load, reload and new tab opens in Mock, and Live is entered by pressing the toggle (when the server allows it).
 - **Mock** shows the mock demo connections. Everything in this README runs in Mock.
-- **Live** shows the saved real-server connections, the one-click presets and the "Add a connection" form. Pressing Live when it is refused changes nothing and sends no request: the page shows which guard failed and stays in Mock. Live is allowed only when every guard passes: the owner opted in with `PINGONE_MCP_INSPECTOR_MODE=live` (in the settings file or the environment), and the server is bound to loopback. A non-loopback bind (`P1MCP_BIND`) passes the guard only inside the container image, which also sets `P1MCP_CONTAINER=1` (it is published on `127.0.0.1` only); on a host run, `P1MCP_BIND=0.0.0.0` with Live is refused as `loopback-bind`. `GET /api/info` lists the failing guards.
+- **Live** shows the saved real-server connections, the one-click presets and the "Add a connection" form. Pressing Live when it is refused changes nothing and sends no request: the page shows which guard failed and stays in Mock. Live is allowed only when every guard passes: the owner opted in with `PRIVILEGE_EXPLORER_MODE=live` (in the settings file or the environment), and the server is bound to loopback. A non-loopback bind (`PAE_BIND`) passes the guard only inside the container image, which also sets `PAE_CONTAINER=1` (it is published on `127.0.0.1` only); on a host run, `PAE_BIND=0.0.0.0` with Live is refused as `loopback-bind`. `GET /api/info` lists the failing guards.
 - A saved Live connection is refused with 403 `live_refused` on every network route while Live is refused, even if it is already in the file. Deleting it, locking its writes and signing out stay available.
 - Live connection rules: the server URL must be https (http only on loopback), carry no credentials and not be a literal private, link-local, shared (100.64.0.0/10) or benchmark (198.18.0.0/15) address, including the same IPv4 address written as an IPv6 literal (`[::ffff:10.0.0.1]`, NAT64 `[64:ff9b::a00:1]`, 6to4); a PingOne region must be `com`, `eu`, `asia` or `ca` unless you opt in to another suffix. Redirects are not followed and replies are size and time capped. Writes are off for every new connection; a write needs the confirm gate (exact arguments and their hash), and a destructive call needs the tool name typed.
 - **Presenter mode** (press `P`, or the Present button; `Esc` leaves it). It enlarges the text and shows a presenter bar. The toggle, the mode chip and the banner stay.
@@ -96,7 +96,7 @@ curl -s http://127.0.0.1:5201/api/health
 docker compose down
 ```
 
-The container publishes on `127.0.0.1` only (a test pins it), runs as the non-root `node` user with a read-only root filesystem, all capabilities dropped and a `/data` volume for the saved connections. The server binds `0.0.0.0` inside it only because `P1MCP_BIND` is set in the image, and `P1MCP_CONTAINER=1` (also set by the image) is what lets Live accept that bind. Live is off in the container unless you start it with `PINGONE_MCP_INSPECTOR_MODE=live` in your shell. For the interactive sign-in (Live), register `http://localhost:<HOST_PORT>/api/oauth/callback` on your OAuth application: the app refuses a redirect URI whose port differs from the port the page is served on. Check a running instance by content with `npm run verify-running -- http://localhost:5201 [--container <name>]` (mock stub only).
+The container publishes on `127.0.0.1` only (a test pins it), runs as the non-root `node` user with a read-only root filesystem, all capabilities dropped and a `/data` volume for the saved connections. The server binds `0.0.0.0` inside it only because `PAE_BIND` is set in the image, and `PAE_CONTAINER=1` (also set by the image) is what lets Live accept that bind. Live is off in the container unless you start it with `PRIVILEGE_EXPLORER_MODE=live` in your shell. For the interactive sign-in (Live), register `http://localhost:<HOST_PORT>/api/oauth/callback` on your OAuth application: the app refuses a redirect URI whose port differs from the port the page is served on. Check a running instance by content with `npm run verify-running -- http://localhost:5201 [--container <name>]` (mock stub only).
 
 ## Tests
 
@@ -110,7 +110,7 @@ On Node 26, with the counts from the last run in this repo: 79 server tests (nod
 
 - **The port is taken, or "refusing to start: port-range".** See "Ports, and what to do if the port is taken". `PORT` must be inside 5201-5249.
 - **`GET /` answers a JSON 404.** The UI is not built. Run `npm run build`, then restart.
-- **Pressing Live does nothing but show a message.** That is the designed behaviour: Live is refused until `PINGONE_MCP_INSPECTOR_MODE=live` is set in `~/Development/.env` (or the environment), then restart the server.
+- **Pressing Live does nothing but show a message.** That is the designed behaviour: Live is refused until `PRIVILEGE_EXPLORER_MODE=live` is set in `~/Development/.env` (or the environment), then restart the server.
 - **A Live connection answers 403 `live_refused`.** Same cause. It was saved while Live was allowed; set the key again, or delete the connection.
 - **The browser console shows 4xx lines after you press Test, Call or Sign in.** The gate's deliberate refusals (writes off, confirm needed, not signed in) are real HTTP 4xx answers, and the browser logs them. They are not errors. See "Safety notes" for the list.
 - **Sign-in says the redirect URI is invalid.** It must be `http://localhost:<the port you open the page on>/api/oauth/callback`, exactly as registered on your OAuth application (Live only; UNVERIFIED against PingOne).
@@ -131,7 +131,7 @@ On Node 26, with the counts from the last run in this repo: 79 server tests (nod
 - Diagram: a ReactFlow diagram (movable boxes, Simulate, Reset, speed) of the path from your browser through this app, the token endpoint and the hosted MCP server to the admin API, for the worker and the interactive sign-in. The two diagrams are diagram-studio/1 data in `server/diagrams/` (`worker.json`, `interactive.json`). The server checks both with a copy of the studio's validator when it starts (an invalid file stops it, and `npm run doctor` says so), serves the list at `GET /api/diagrams` and each file at `GET /api/diagrams/:name` (a fixed name list; any other name is a JSON 404 that does not echo it), and the page fetches the diagram by name. The Docker image copies `server/diagrams`.
 - Stories: two talk tracks (S01 a short tool list, S02 a write needs a second look) with three vertical packs, shown on the Tools, Tool and Stories pages. The presenter script is [docs/talk-track.md](docs/talk-track.md), generated from them.
 
-Safety notes: loopback bind (refused otherwise unless `P1MCP_BIND` is set), Host check, same-origin writes. A tenant's own tool results are shown as data; only this tool's own secrets are scrubbed from them. A `readOnlyHint:true` annotation is not honoured when the tool name starts with or contains a write or destructive verb, nor when the name has no recognised verb at all (unknown stays write). The deliberate 4xx answers are `live_refused` (403), `writes_disabled` (403), `method_not_allowed` (403), `confirm_required` and `args_hash_mismatch` (409), `typed_name_required` (409) and `login_required` (401). Unverified against a real tenant, by design of this build: the exact scopes and consent behaviour of the interactive login, the tool count for a fully privileged worker (the skill says about 60 to 70), which MCP endpoint shape a tenant answers on, whether the hosted server accepts a worker (client_credentials) token at all (sources disagree; see docs/live-checks.md item 2), and PingOne's redirect-URI rules for `http://localhost`.
+Safety notes: loopback bind (refused otherwise unless `PAE_BIND` is set), Host check, same-origin writes. A tenant's own tool results are shown as data; only this tool's own secrets are scrubbed from them. A `readOnlyHint:true` annotation is not honoured when the tool name starts with or contains a write or destructive verb, nor when the name has no recognised verb at all (unknown stays write). The deliberate 4xx answers are `live_refused` (403), `writes_disabled` (403), `method_not_allowed` (403), `confirm_required` and `args_hash_mismatch` (409), `typed_name_required` (409) and `login_required` (401). Unverified against a real tenant, by design of this build: the exact scopes and consent behaviour of the interactive login, the tool count for a fully privileged worker (the skill says about 60 to 70), which MCP endpoint shape a tenant answers on, whether the hosted server accepts a worker (client_credentials) token at all (sources disagree; see docs/live-checks.md item 2), and PingOne's redirect-URI rules for `http://localhost`.
 
 ## Known gaps and not done
 
