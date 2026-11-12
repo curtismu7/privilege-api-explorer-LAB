@@ -2,7 +2,7 @@
   "schema": "demo-content-pack/1",
   "id": "privilege-api-explorer",
   "title": "Privilege API Explorer LAB",
-  "version": "0.3.0",
+  "version": "0.1.0",
   "demo": {
     "id": "privilege-api-explorer",
     "name": "Privilege API Explorer LAB",

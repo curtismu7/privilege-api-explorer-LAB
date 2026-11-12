@@ -1,9 +1,9 @@
 {
   "name": "privilege-api-explorer-lab",
-  "version": "0.3.0",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Privilege API Explorer LAB: connect to PingOne's hosted MCP server (or any MCP server), list its tools with a safety class, and call them read-only by default. Mock by default; Live is owner-run.",
+  "description": "Privilege API Explorer LAB: sign in to a Privilege console with an API key/secret, browse all 447 console API operations from the swagger catalog with search and filters, and run each one live. Mock by default; Real is owner-run.",
   "license": "MIT",
   "workspaces": [
     "server",
@@ -23,7 +23,6 @@
     "e2e": "node scripts/e2e.mjs",
     "talk-track": "node scripts/build-talk-track.mjs",
     "content-pack": "node scripts/build-content-pack.mjs && node scripts/validate-content-pack.mjs",
-    "classification": "node scripts/gen-classification.mjs",
     "verify-running": "node scripts/verify-running.mjs"
   },
   "devDependencies": {

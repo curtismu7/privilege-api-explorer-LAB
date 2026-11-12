@@ -39,9 +39,9 @@ test('docs/shelf-entry.json is well-formed, loopback-only, and matches the compo
   assert.ok(!d.composeFile.startsWith('/'), 'a portable (relative) compose file');
   assert.ok(d.name.length <= 300 && d.description.length <= 300);
 });
-test('classification.md, live-checks.md and architecture.md exist and the live checklist has its three required parts', () => {
+test('live-checks.md and architecture.md exist and the live checklist has its required parts', () => {
   const lc = read('docs/live-checks.md');
   for (const h of ['## Stop if', '## Evidence template']) assert.ok(lc.includes(h), h);
-  assert.match(lc, /one gated write/i);
-  for (const f of ['docs/classification.md', 'docs/architecture.md', 'docs/security.md', 'docs/references.md']) assert.ok(fs.existsSync(path.join(root, f)), f);
+  assert.match(lc, /gated write/i);
+  for (const f of ['docs/architecture.md', 'docs/security.md', 'docs/references.md']) assert.ok(fs.existsSync(path.join(root, f)), f);
 });
