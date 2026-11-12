@@ -1,12 +1,52 @@
 [
-  { "id": "hosted-mcp-server", "term": "Hosted MCP server", "definition": "PingOne's own MCP endpoint, run by Ping, for the Management API admin plane. This app connects to it as a client, lists its tools and calls them. Endpoint shape: https://api.pingone.{region}/v1/environments/{envId}/mcp (pingone-mcp skill; a second shape seen in AI-DEMO2 is UNVERIFIED).", "aliases": ["PingOne MCP server"] },
-  { "id": "admin-plane", "term": "Admin plane", "definition": "The part of PingOne that manages PingOne itself: applications, populations, users, DaVinci flows, environment configuration. It is not your own product's data or end-user tools.", "aliases": ["management plane"] },
-  { "id": "worker-application", "term": "Worker application", "definition": "A PingOne application with admin roles, used by unattended callers such as scripts and services. Give it only the roles the caller needs: an overprivileged worker is as risky as an overprivileged REST credential.", "aliases": ["worker app"] },
-  { "id": "client-credentials", "term": "Client credentials", "definition": "The OAuth grant a worker application uses: it presents its own client id and secret at the token endpoint and gets a bearer token. The secret is only ever sent to the token endpoint; the MCP endpoint gets the bearer token.", "aliases": ["client_credentials"] },
-  { "id": "authorization-code-pkce", "term": "Authorization code with PKCE", "definition": "The interactive sign-in: the admin is sent to the authorization server, approves, and comes back with a code that is exchanged using a one-time secret (the PKCE verifier, S256). This app adds state and nonce, checks the issuer, and accepts the callback only on the exact registered loopback redirect URI.", "aliases": ["PKCE", "interactive admin OAuth"] },
-  { "id": "role-gated-tool-list", "term": "Role-gated tool list", "definition": "The server lists only the tools the calling identity's admin roles allow. A short list usually means missing roles, not a broken server (pingone-mcp skill). The same URL shows different tools to a viewer and an admin.", "aliases": ["short tool list"] },
-  { "id": "mcp-first-rule", "term": "MCP-first rule", "definition": "Prefer the hosted MCP tools for application, population and user reads, user management and DaVinci reads; fall back to the Management API for what MCP does not cover, and on any MCP failure do not retry in a loop (pingone-mcp skill).", "aliases": ["MCP first"] },
-  { "id": "read-only-by-default", "term": "Read-only by default", "definition": "Every tool is classed read, write or destructive. Write and destructive calls are blocked until the operator turns on allow writes for that connection. Unknown tools count as write.", "aliases": ["allow writes off"] },
-  { "id": "confirm-gate", "term": "Confirm gate", "definition": "Even with writes allowed, a write call is refused until the request carries confirm:true and the hash of the exact arguments that were shown. Destructive calls also need the tool name typed. Change one argument and the hash no longer matches.", "aliases": ["argsHash", "second look"] },
-  { "id": "audit-log", "term": "Audit log", "definition": "A local, append-only record of every call, allowed or blocked: when, which connection, which tool, its class, the outcome, the arguments (secret-looking keys redacted) and their hash. Secrets and tokens are scrubbed before anything is written.", "aliases": [] }
+  {
+    "id": "privilege-console-api",
+    "definition": "The REST API of PingOne Privilege's console, under /api/{tenant}/v1. This app renders all 447 operations from the console's own swagger and runs them read-only by default.",
+    "term": "Privilege console API"
+  },
+  {
+    "id": "api-key-secret",
+    "definition": "The user API key pair from the Privilege console's Settings \u2192 For Developers. Sent as x-api-key and x-api-secret headers. The secret is write-only in this app: never returned, never logged.",
+    "term": "API key and secret"
+  },
+  {
+    "id": "procyon-session-id",
+    "definition": "x-procyon-session-id: a required correlation header on every console call. Structurally required; its value is unvalidated by the console. This app mints a fresh UUID per call.",
+    "term": "Session id header"
+  },
+  {
+    "id": "tenant-id",
+    "definition": "The Privilege tenant UUID that appears in the console URL. Spliced into every operation's path template by this app from the saved connection.",
+    "term": "Tenant id"
+  },
+  {
+    "id": "swagger-catalog",
+    "definition": "The console API's swagger (imodel.swagger.json, Swagger 2.0) reduced to 447 operations across 92 services. Searched by substring across method, path, service and summary.",
+    "term": "Swagger catalog"
+  },
+  {
+    "id": "read-only-by-default",
+    "definition": "GET calls run; POST and PUT need the per-connection writes switch; DELETE and PATCH always need it. A blocked call is answered 403 writes_disabled and audited.",
+    "term": "Read-only by default"
+  },
+  {
+    "id": "mock-console",
+    "definition": "An in-process mock of the Privilege console API on loopback: imodel-shaped sample tenant, illustrative not a recording. Write calls change only that in-memory sample.",
+    "term": "Mock console"
+  },
+  {
+    "id": "netguard",
+    "definition": "The runtime guard that refuses every non-loopback socket, DNS lookup, fetch and UDP send. A Real call holds a permit for its own console origin only, while the operation runs.",
+    "term": "Netguard"
+  },
+  {
+    "id": "audit-log",
+    "definition": "Every call this app made \u2014 ok, refused, blocked or error \u2014 persisted redacted. The API secret is never in it.",
+    "term": "Audit log"
+  },
+  {
+    "id": "simulation-honesty",
+    "definition": "The banner on every page names the mode and says what is simulated. Mock-issued answers are labelled as an illustrative sample, not a recording.",
+    "term": "Simulation honesty"
+  }
 ]

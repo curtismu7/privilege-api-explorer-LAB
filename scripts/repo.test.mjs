@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = (p) => fs.readFileSync(path.join(root, p), 'utf8');
-const WEB_JSX = ['App.jsx', 'components/Banner.jsx', 'components/CallView.jsx', 'components/ConfirmDialog.jsx', 'components/HealthCard.jsx', 'components/ScanPanel.jsx', 'pages/Audit.jsx', 'pages/Connections.jsx', 'pages/Diagram.jsx', 'pages/McpFirst.jsx', 'pages/Raw.jsx', 'pages/Stories.jsx', 'pages/Tool.jsx', 'pages/Tools.jsx', 'present/Present.jsx', 'story/StoryPanel.jsx'];
+const WEB_JSX = ['App.jsx', 'components/Banner.jsx', 'components/HealthCard.jsx', 'pages/Audit.jsx', 'pages/Connections.jsx', 'pages/Diagram.jsx', 'pages/Explorer.jsx', 'present/Present.jsx'];
 const SKIP = new Set(['node_modules', 'dist', '.git', 'package-lock.json', '.data']);
 const walk = (dir, fn) => {
   for (const name of fs.readdirSync(dir)) {
@@ -25,7 +25,7 @@ test('the files the standalone rules ask for are present', () => {
 
 test('package.json has the standard scripts and requires Node 26; the Dockerfile uses a Node 26 base', () => {
   const pkg = JSON.parse(read('package.json'));
-  for (const s of ['start', 'dev', 'test', 'build', 'doctor', 'reset', 'prepare', 'smoke']) assert.ok(pkg.scripts[s], s);
+  for (const s of ['start', 'dev', 'test', 'build', 'doctor', 'reset', 'smoke']) assert.ok(pkg.scripts[s], s);
   assert.equal(pkg.engines.node, '>=26');
   assert.ok((read('Dockerfile').match(/^FROM node:26-alpine/gm) || []).length === 2);
   assert.match(pkg.scripts.test, /node --test scripts\/\*\.test\.mjs/, 'the scripts tests run by glob, never a directory');
@@ -37,16 +37,15 @@ test('README follows the README standard: title ends in LAB, plain Tier, Repo an
   assert.match(r.split('\n')[0], /^# .* LAB$/);
   assert.match(r, /^Tier: Tester$/m);
   assert.match(r, /^Repo: https:\/\/github\.com\/curtismu7\/privilege-api-explorer-LAB$/m);
-  assert.match(r, /^Catalog: D3$/m);
+  assert.match(r, /^Catalog: D3/m);
   const at = (h) => r.indexOf(`\n## ${h}`);
-  const order = ['What is simulated', 'Run from a clone', 'Settings file', 'Ports, and what to do if the port is taken', 'Mock and live modes', 'Health, doctor and reset', 'Docker (optional)', 'Tests', 'Troubleshooting', 'Ownership'].map(at);
+  const order = ['What is simulated', 'Run from a clone', 'Real mode (owner-run)', 'Settings file', 'Ports, and what to do if the port is taken', 'Tests', 'Reset'].map(at);
   assert.ok(order.every((i) => i > 0), order.join());
   assert.deepEqual([...order].sort((a, b) => a - b), order, 'sections are in order');
-  assert.match(r, /lsof -iTCP:5201 -sTCP:LISTEN -n -P/);
-  assert.match(r, /PORT=<other port> npm start/);
+  assert.match(r, /lsof -iTCP:7813 -sTCP:LISTEN -n -P/);
+  assert.match(r, /PORT=7816 npm start/);
   assert.match(r, /util\.parseEnv/);
   assert.doesNotMatch(r, /Rule 17 gap/, 'the diagram is loaded from diagram-studio/1 data, so the gap note is gone');
-  assert.match(r, /GET \/api\/diagrams\/:name/);
   assert.ok(!/ping-devops|cmuir/i.test(r));
   assert.ok(!/TEST_COUNTS_PLACEHOLDER/.test(r), 'the test counts are filled in');
 });
@@ -54,7 +53,7 @@ test('README follows the README standard: title ends in LAB, plain Tier, Repo an
 test('rule 17: the diagram is diagram-studio/1 data in server/diagrams, validated and served by name, copied into the image, and the page builds no nodes or edges itself', () => {
   const dir = path.join(root, 'server', 'diagrams');
   const files = fs.readdirSync(dir).filter((f) => f.endsWith('.json')).sort();
-  assert.deepEqual(files, ['interactive.json', 'worker.json']);
+  assert.deepEqual(files, ['read.json', 'writes.json']);
   for (const f of files) assert.equal(JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')).schema, 'diagram-studio/1', f);
   assert.match(read('Dockerfile'), /^COPY server\/diagrams server\/diagrams$/m, 'the image carries the diagram files');
   assert.match(read('server/src/app.js'), /createDiagrams\(/);
@@ -89,7 +88,7 @@ test('the CI workflow is GitHub-hosted, Node 26 only, and carries the forbidden-
   assert.match(ci, /forbidden-strings:/);
   assert.match(ci, /gitleaks/);
   assert.match(ci, /actions\/checkout@v5/);
-  assert.match(ci, /PORT=5230 npm run doctor/);
+  assert.match(ci, /PORT=7814 npm run doctor/);
 });
 
 test('the repo ships no k8s manifests, no deploy scripts, no hosted mode and no bare MODE', () => {

@@ -81,7 +81,7 @@ test('liveHosts: the one console origin the connection names', () => {
   assert.deepEqual(liveHosts(null), []);
 });
 
-test('Real holds a permit for the connection\'s console host while an operation runs, and gives it back; Mock holds none', async () => {
+test('Real holds a permit for the console host of the connection in use while an operation runs, and gives it back; Mock holds none', async () => {
   const seen = [];
   const fetchImpl = async (url, init) => {
     const host = new URL(url).hostname;

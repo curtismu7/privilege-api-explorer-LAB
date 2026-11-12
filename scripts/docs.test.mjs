@@ -11,12 +11,9 @@ const read = (p) => fs.readFileSync(path.join(root, p), 'utf8');
 const testSources = Object.fromEntries(fs.readdirSync(path.join(root, 'server/test')).filter((f) => f.endsWith('.test.js')).map((f) => [f, read(`server/test/${f}`)]));
 
 test('every `file :: test title` in docs/security.md names a test that exists', () => {
-  const refs = [...read('docs/security.md').matchAll(/`([a-zA-Z]+\.test\.js) :: ([^`]+)`/g)];
+  const refs = [...read('docs/security.md').matchAll(/`(?:server\/test\/)?([a-zA-Z]+\.test\.js) :: ([^`]+)`/g)];
   assert.ok(refs.length >= 15, `found ${refs.length} references`);
   for (const [, file, title] of refs) assert.ok(testSources[file]?.includes(title), `${file} has no test titled "${title}"`);
-});
-test('the "..." continuation titles in security.md also exist in auth.test.js', () => {
-  for (const [, title] of read('docs/security.md').matchAll(/`\.\.\. ([^`]+)`/g)) assert.ok(testSources['auth.test.js'].includes(title), title);
 });
 test('relative markdown links in README and docs resolve', () => {
   for (const f of ['README.md', 'CHANGELOG.md', ...fs.readdirSync(path.join(root, 'docs')).filter((x) => x.endsWith('.md')).map((x) => `docs/${x}`)]) {
@@ -36,7 +33,7 @@ test('docs/shelf-entry.json is well-formed, loopback-only, and matches the compo
   const [d] = demos;
   assert.match(d.id, /^[a-z0-9-]{2,41}$/);
   assert.equal(d.id, 'privilege-api-explorer');
-  assert.match(d.url, /^http:\/\/localhost:5201$/);
+  assert.match(d.url, /^http:\/\/localhost:7813$/);
   assert.equal(d.healthPath, '/api/health');
   assert.match(d.composeFile, /\/docker-compose\.yml$/);
   assert.ok(!d.composeFile.startsWith('/'), 'a portable (relative) compose file');

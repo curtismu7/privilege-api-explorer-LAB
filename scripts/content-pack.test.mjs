@@ -17,11 +17,11 @@ test('the validator rejects a broken pack', () => {
   delete pack.title;
   assert.ok(validatePack(pack).length >= 2);
 });
-test('the pack has the ten required terms, two story cards, and lists no source it did not fetch', () => {
+test('the pack has the required terms, no story cards, and lists no source it did not fetch', () => {
   const pack = buildPack();
-  for (const id of ['hosted-mcp-server', 'admin-plane', 'worker-application', 'client-credentials', 'authorization-code-pkce', 'role-gated-tool-list', 'mcp-first-rule', 'read-only-by-default', 'confirm-gate', 'audit-log']) assert.ok(pack.glossary.some((g) => g.id === id), id);
+  for (const id of ['privilege-console-api', 'api-key-secret', 'procyon-session-id', 'tenant-id', 'swagger-catalog', 'read-only-by-default', 'mock-console', 'netguard', 'audit-log', 'simulation-honesty']) assert.ok(pack.glossary.some((g) => g.id === id), id);
   assert.deepEqual(pack.sources, []);
-  assert.deepEqual(pack.cards.filter((c) => c.story).map((c) => c.story).sort(), ['S01', 'S02']);
+  assert.deepEqual(pack.stories, []);
 });
 test('a commit is recorded only when passed', () => {
   assert.equal(buildPack().source, undefined);

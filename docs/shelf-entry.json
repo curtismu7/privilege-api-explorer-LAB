@@ -3,14 +3,14 @@
     {
       "id": "privilege-api-explorer",
       "name": "Privilege API Explorer LAB",
-      "catalogId": "D3",
       "kind": "Tester",
-      "description": "Connect to PingOne's hosted MCP server (worker or interactive admin sign-in) or any MCP server, list its tools with a safety class, and call them read-only by default. Mock by default; Live is owner-run.",
-      "url": "http://localhost:5201",
+      "description": "Sign in to a PingOne Privilege console with a user API key and secret, then browse all 447 console API operations from the swagger catalog with substring search and filters, and run each one live with real-time status, timing and response. Mock by default; Real is owner-run.",
+      "url": "http://localhost:7813",
       "healthPath": "/api/health",
       "composeFile": "privilege-api-explorer-LAB/docker-compose.yml",
       "composeOverlays": [],
-      "notes": "Host-run: npm ci && npm run build && npm start (port 5201; npm run doctor checks it). Or: HOST_PORT=5201 docker compose up --build -d (published on 127.0.0.1 only). Mock mode needs no setup; Live is refused until the owner sets PRIVILEGE_EXPLORER_MODE=live. Not tested against a real tenant. The composeFile is relative to the folder the demo repos sit in."
+      "notes": "Host-run: npm ci && npm run build && npm start (port 7813; npm run doctor checks it). Or: HOST_PORT=7813 docker compose up --build -d (published on 127.0.0.1 only). Mock mode needs no setup; Real is refused until the owner sets PRIVILEGE_EXPLORER_MODE=real. The composeFile is relative to the folder the demo repos sit in.",
+      "catalogId": "D3"
     }
   ]
 }

@@ -1,40 +1,53 @@
-# Security rules and the test that enforces each
+# Security model
 
-This tool can act on a real PingOne tenant's admin plane, so it is built to refuse by default. Every rule below names the test that pins it (`file :: test title`); `scripts/docs.test.mjs` fails if a named test no longer exists. **None of these tests touched a real tenant**: they run against in-process stubs on loopback under a netguard that records any other outbound attempt and fails the file if there is one (`server/test/netguard.js`, self-tested by `netguard.test.js`). The shipped server has its own runtime netguard (`server/src/netguard.js`, tested in `runtimeguard.test.js`).
+What this app protects, and the test that pins each rule. Every claim here names a test that runs in `npm test`.
 
-| # | Rule | Enforced by |
-| --- | --- | --- |
-| 1 | Read-only by default. A new connection has writes off; write and destructive calls are refused (403 `writes_disabled`) and audited. | `api.test.js :: writes are blocked by default and audited; reads run` |
-| 2 | Every tool is classed read, write or destructive: annotations first, else a name heuristic, **unknown is write**. A `readOnlyHint:true` that contradicts a write or destructive verb in the name is ignored. Table: [classification.md](classification.md). | `classify.test.js :: classification golden table`; `hostile.test.js :: a noun-first tool with a lying readOnlyHint is treated as destructive and never reaches the upstream unconfirmed` |
-| 3 | With writes on, a write still needs `{confirm:true, argsHash}` for the exact arguments; changed arguments change the hash; destructive calls also need the tool name typed. | `api.test.js :: confirm gate: needs confirm, exact argsHash, typed name for destructive` |
-| 4 | The raw JSON-RPC console allows only listed methods; `tools/call` from it goes through the same gate. | `api.test.js :: raw console: free methods pass, others refused, tools/call goes through the gate` |
-| 5 | A tool the identity does not see (role gating) cannot be called. | `api.test.js :: a tool the identity cannot see is refused; wrong-case params warn` |
-| 6 | Every call, allowed or blocked, is appended to a local audit log; secret-looking argument keys are redacted. | `hostile.test.js :: audit log redacts sensitive argument keys (in memory, over GET /api/audit and in audit.jsonl)` |
-| 7 | Tokens (worker, access, refresh, id) and client secrets are held server-side only and never appear in a response, a log line, the audit log or an error; the UI shows `set` or `signed in as <sub>`. | `api.test.js :: secrets never appear in responses, console output, the audit log or errors (sentinels)`; `api.test.js :: mock role switch changes the tool list and the auth status carries an expiry but no token` |
-| 8 | A hostile token endpoint or MCP server that echoes the secret, access token or refresh token in an error body cannot get it into a response. | `hostile.test.js :: token endpoint error echoing the secret never reaches a response`; `hostile.test.js :: MCP error bodies echoing bearer, secret and refresh token are scrubbed on /tools, /test and /call`; `auth.test.js :: worker: a token endpoint error that echoes the secret is scrubbed from the thrown message` |
-| 9 | Connection store is a mode 600 file in a mode 700 directory; secrets are write-only. | `api.test.js :: connections: validation, secrets write-only, file mode 600 in a 700 dir` |
-| 10 | Interactive OAuth: authorization code + PKCE S256 + state + nonce; `iss` validated; id_token signature checked against the AS jwks; state is single use and expires after 5 minutes; the callback is accepted only on the exact registered loopback redirect URI; logout clears tokens. | `auth.test.js :: interactive: full code+PKCE flow, authorize carries S256/state/nonce, status shows sub only, logout clears`; `... state is single use (replay refused) and unknown state refused`; `... state expires after the TTL`; `... wrong iss (callback param or id_token) is refused`; `... nonce mismatch, wrong redirect URI, error param, tampered code all refused`; `... an id_token signed by a key the jwks does not publish is refused (valid iss, aud and nonce)` |
-| 11 | Starting the interactive login is a same-origin POST, and the connection's redirect URI must be `http://localhost:<the port this page is served on>/api/oauth/callback` (or `/callback`). | `api.test.js :: interactive login over HTTP: start is same-origin only, callback lands once, logout clears`; `scripts/verify-running.mjs` (a redirect URI on another port is refused, against the container) |
-| 12 | Loopback bind (refused otherwise unless `PAE_BIND` is set), Host check (DNS-rebinding guard), and same-origin check on every state-changing call. | `api.test.js :: guards: bad Host refused, cross-origin and missing-origin writes refused, non-loopback bind refused`; `scan.test.js :: scan is a same-origin POST like every write route` |
-| 13 | The container publishes its port on `127.0.0.1` only, runs as a non-root user, read-only, no capabilities. | `scripts/compose.test.mjs` (parses the compose file) |
-| 14 | Server replies (JSON or one SSE frame) are size-capped (4 MiB), redirects are refused, malformed replies fail, timeouts are reported. | `mcpClient.test.js :: redirects are refused, oversize and malformed replies fail, timeouts are reported`; `mcpClient.test.js :: JSON and a single SSE frame both parse` |
-| 15 | All server-supplied strings (tool names, descriptions, results, scan findings) render as inert text, never markup. | `web/src/lib` `Untrusted` component; browser check in `scripts/e2e.mjs` ("poisoned text is shown as inert text") |
-| 16 | The repo carries no tenant identifier: the only UUID allowed is the placeholder used by tests, and no private host name or private key. | `repo-scan.test.js :: no UUID other than the placeholder, no private host, no key material` |
-| 17 | The scan reads `tools/list` only (never calls a tool), reports and blocks nothing, and flags a poisoned list from any connection. | `scan.test.js :: a custom server serving the hostile list is flagged (high findings with rule ids), tools/list only`; `scan.test.js :: the PingOne mock (viewer and admin) scans clean` |
-| 18 | The shelf health reply is the `demo-health/1` contract: public, GET only, no counts, no detail. | `api.test.js :: health is demo-health/1 exactly, public, no-store`; `api.test.js :: GET /api/health turns needs-setup into ready as soon as a connection exists (no 60 s wait)` |
-| 19 | Live is refused unless every guard passes (the owner's `PRIVILEGE_EXPLORER_MODE=live` and a loopback bind or the container opt-in). A saved Live connection cannot be created, from the form or a preset, and one already in the file is refused on every network route before any request is made. Local-only routes (delete, lock writes, sign out) stay available. A bare `MODE` is never read. | `mode.test.js :: with Live refused: a saved Live connection cannot be created, from the form or a preset, and nothing is stored`; `mode.test.js :: with Live refused: a Live connection already in the file is refused on every route before any request is made`; `mode.test.js :: the guards: Live needs the owner opt-in and a loopback bind (or the container opt-in)`; `mode.test.js :: modeFrom: mock by default, live only when asked, anything else is an error, a bare MODE is ignored` |
-| 20 | Mock makes zero outbound calls. The Mock demo works in full with Live refused, under a recorder that fails the file on any non-loopback attempt. | `mode.test.js :: with Live refused: the Mock demo works in full (tools, call, scan, audit), with zero outbound attempts` |
-| 21 | The shipped server runs under a runtime netguard: every non-loopback socket, DNS lookup, fetch, UDP send and UDP connect is refused and recorded, with a self-test. Live holds a permit for exactly the hosts of the connection in use (PingOne token and MCP hosts, or the one typed URL) while one operation runs, and gives it back. | `runtimeguard.test.js :: self-test: every route out is refused and recorded, none reaches the network`; `runtimeguard.test.js :: a permit allows exactly one named host, only while held; loopback never needs one; overlapping permits are counted`; `runtimeguard.test.js :: Live holds a permit for each host of the connection in use while an operation runs, and gives it back; Mock holds none` |
-| 22 | A typed server URL must be https (http only on loopback), carry no credentials and not be a literal private, link-local, shared (100.64.0.0/10), benchmark (198.18.0.0/15) or unspecified address; an IPv6 literal that carries an IPv4 address (IPv4-mapped, SIIT, NAT64, 6to4) is judged by that IPv4 address, and Teredo is refused. | `api.test.js :: a typed server URL must be https (http only on loopback), carry no credentials and not be a literal private address` |
-| 23 | The one shared settings file is read through `util.parseEnv` and only the three listed keys are taken; nothing else from it enters the environment; it is never written; a client id or secret is never read from it. | `mode.test.js :: the shared settings file: only the listed keys are taken, nothing else enters the environment, no file means defaults`; `mode.test.js :: the shared settings file can supply the PingOne preset with an environment id and region, never a client id or secret` |
-| 24 | Reset clears the audit history, every token and half-finished sign-in, turns writes off and restores the mock's fake tenant; it keeps the saved connections and their secrets; it is a same-origin POST. | `reset.test.js :: Reset clears the audit, the tokens, writes and the mock tenant, and keeps the connection and its secret`; `reset.test.js :: Reset is a same-origin POST like every write, and a second Reset changes nothing` |
-| 25 | Unknown routes and malformed bodies answer JSON that does not echo the path; a connection id is looked up as an own key (`__proto__`, `constructor` are not connections). | `mode.test.js :: an unknown route and a malformed body answer JSON, never an HTML error page that echoes the path`; `mode.test.js :: a connection id is looked up as an own key: __proto__ and constructor are not connections` |
+## The request path
 
-## What is not covered
+Browser → this app's server (Express, loopback by default) → the Privilege console origin of the connection in use. The browser never holds the API secret and never talks to the console directly.
 
-- **Nothing was run against a real PingOne tenant.** Whether the real server's tool names, annotations, scopes and consent behave as the stubs do is unverified; see [live-checks.md](live-checks.md).
-- A tenant's own tool results are shown as data. Only this tool's own secrets are scrubbed from them, so a tenant record that happens to contain your client secret string would be shown with that string replaced.
-- The scan is a heuristic over metadata (rule table copied from `mcp-tools`). It misses result-based injection, a rug-pull after the scan, novel phrasing, and anything it was not given; a clean scan is not proof of safety. A legitimate tool whose description uses a flagged phrase can trip a rule (this happened once to this repo's own fixture and the fixture was reworded).
-- The data directory holds worker client secrets in a mode 600 file (needed to mint tokens). Anyone who can read your account's files can read them; use a worker app with the minimum roles, and delete the connection when finished.
-- The typed-URL guard refuses literal private addresses only. A host name that resolves to a private address is not caught, and neither is DNS rebinding of a name the operator typed. Live is the owner's opt-in and acts on whatever server the operator names.
-- `PAE_BIND` and `PAE_ALLOWED_HOSTS` are explicit opt-ins that weaken the loopback guard. The container sets `PAE_BIND=0.0.0.0` inside only; the published port stays on `127.0.0.1`. Live additionally refuses any non-loopback bind unless `PAE_CONTAINER=1` (set by the image) is present.
+## What the server holds
+
+- The **API secret** of each saved connection, in `.data/connections.json` (mode 600, in a mode 700 dir). It is write-only: the API answers `apiSecret: "set"`, never the value (`server/test/api.test.js :: connections: create, list, update writes, delete; the secret is never returned`).
+- Every response, error and audit line goes through `scrub()`/`scrubJson()`, which replaces the key and secret wherever they might echo back (`server/test/api.test.js :: connection test: the probe proves the credential against the mock, and the audit keeps every call`).
+
+## Network
+
+- **Loopback bind by default.** A non-loopback `PAE_BIND` is an explicit opt-in; inside the container the image sets `PAE_CONTAINER=1` and compose publishes `127.0.0.1:` only (`scripts/compose.test.mjs :: docker-compose.yml publishes only on 127.0.0.1, mapping to the container port 7813`).
+- **Host check.** The server answers only to a loopback Host header, or the names in `PAE_ALLOWED_HOSTS` / `LAB_ALLOWED_HOSTS` (the lab-proxy). DNS-rebinding is refused (`server/test/labproxy.test.js :: LAB_ALLOWED_HOSTS: the lab-proxy name is served on any port, other names stay 403`).
+- **Same-origin writes.** Every state-changing call must carry an Origin matching Host — or, behind the lab-proxy, the forwarded origin the proxy sets, believed only for allowed Host names (`server/test/labproxy.test.js :: behind the lab-proxy: a write is accepted only with the proxy\'s forwarded origin AND an allowed Host`).
+- **Netguard.** Zero real outbound by default: every non-loopback socket, DNS lookup, fetch, UDP send and UDP connect is refused and recorded. A Real call holds a permit for the connection's console origin only, while the operation runs (`server/test/runtimeguard.test.js :: Real holds a permit for the console host of the connection in use while an operation runs`, `server/test/runtimeguard.test.js :: self-test: every route out is refused and recorded, none reaches the network`).
+- **A typed console origin is screened for SSRF literals**: no credentials in the URL, no literal private or link-local address, http only on loopback (`server/test/api.test.js :: connections: validation refuses a bad tenant, a private literal host, credentials in the URL and a path on the origin`).
+
+## Modes
+
+- **Mock is the default; Real is an owner opt-in.** Real is refused (403 `real_refused`) unless `PRIVILEGE_EXPLORER_MODE=real` and the bind is loopback; a bare `MODE` is never read (`server/test/mode.test.js :: the guards: Real needs the owner opt-in and a loopback bind (or the container opt-in)`, `server/test/mode.test.js :: modeFrom: mock by default, real only when asked, anything else is an error, a bare MODE is ignored`).
+- In Mock mode only loopback-mock connections can be saved; in Real mode the guards must pass (`server/test/mode.test.js :: with Real refused: only a loopback-mock connection can be created; a real origin is refused before anything is stored`).
+
+## The call gate
+
+- Read-only by default: GET runs; POST/PUT need `allowWrites` on the connection; DELETE and PATCH always need it. A blocked call is 403 `writes_disabled` and audited (`server/test/api.test.js :: call proxy: writes are gated. DELETE refuses with writes off; POST works with them on`).
+- The operation id must name a catalog operation; the request path is built from the spec's own path template with encoded values, never from raw user text (`server/test/api.test.js :: call proxy: unknown op, missing required path param, and a wrong-credential refusal are honest`).
+- The console's own refusals (401/403) surface as `login_required` and land in the audit, redacted (`server/test/api.test.js :: connection test: the probe proves the credential against the mock, and the audit keeps every call`).
+
+## Input hardening
+
+- Unknown routes answer JSON and never echo the path (`server/test/mode.test.js :: an unknown route and a malformed body answer JSON, never an HTML error page that echoes the path`).
+- Connection ids are own-key lookups: `__proto__` and `constructor` are not connections (`server/test/mode.test.js :: a connection id is looked up as an own key: __proto__ and constructor are not connections`).
+- Diagram names come from a fixed allow-list; prototype-key names resolve to nothing (`server/test/diagrams.test.js :: lookups never reach object prototypes: only the allow-list names resolve`).
+- The web UI renders every server-supplied string as a text node (`Untrusted`); a test pins that hostile markup from the server stays inert (`web/src/App.test.jsx :: hostile text from the server never becomes markup`).
+- The search is a plain substring match, no user regex, capped length (`server/test/api.test.js :: spec: the full catalog is served, searchable and filterable`).
+
+## Container
+
+- Non-root (`USER node`), read-only root filesystem, `cap_drop: [ALL]`, `no-new-privileges`, no secret baked in (`scripts/compose.test.mjs :: the container hardening stays: non-root, read-only, no capabilities, no secrets baked in`).
+- Real is off in the container unless the owner passes `PRIVILEGE_EXPLORER_MODE=real` at run time (`scripts/compose.test.mjs :: Real is off in the container unless the owner passes it: the compose default is mock, and the image sets no mode`).
+
+## No identifiers from other projects
+
+A repo scan refuses any UUID except the placeholder `11111111-2222-4333-8444-555555555555`, any private host, and any key material (`server/test/repo-scan.test.js :: no UUID other than the placeholder, no private host, no key material`).
+
+## What is NOT here
+
+- No OAuth, no interactive sign-in, no token store: the credential is one key/secret pair per connection.
+- The `appusertoken` JWT flow (encrypted credentials via an external helper) is not implemented; its encryption scheme is undocumented.

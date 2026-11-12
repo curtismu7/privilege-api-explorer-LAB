@@ -19,7 +19,6 @@
     "build": "npm run build -w web",
     "doctor": "node scripts/doctor.mjs",
     "reset": "node scripts/reset.mjs",
-    "prepare": "git config core.hooksPath .githooks || true",
     "smoke": "node scripts/smoke.mjs",
     "e2e": "node scripts/e2e.mjs",
     "talk-track": "node scripts/build-talk-track.mjs",
