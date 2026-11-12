@@ -79,6 +79,7 @@ export default function Explorer({ conn }) {
   const [body, setBody] = useState("{}");
   const [bodyErr, setBodyErr] = useState("");
   const [result, setResult] = useState(null);
+  const [collapsed, setCollapsed] = useState({}); // tag -> true when its category is folded
 
   const load = React.useCallback(async (params) => {
     const sp = new URLSearchParams();
@@ -89,6 +90,18 @@ export default function Explorer({ conn }) {
     if (r.ok) setData(r.json);
   }, []);
   React.useEffect(() => { load({ q, tag, method }); }, [q, tag, method, load]);
+
+  // Idle view (no search, no filters): all operations, grouped by service like the swagger UI's tag sections.
+  // Any search or filter switches to the flat match list.
+  const grouped = React.useMemo(() => {
+    if (!data || q || tag || method) return null;
+    const map = new Map();
+    for (const o of data.operations) {
+      if (!map.has(o.tag)) map.set(o.tag, []);
+      map.get(o.tag).push(o);
+    }
+    return [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+  }, [data, q, tag, method]);
 
   async function openOp(id) {
     const r = await api.get(`/api/spec/ops/${id}`);
@@ -139,10 +152,28 @@ export default function Explorer({ conn }) {
             </select>
           </label>
         </div>
-        <p className="meta" data-testid="match-count">{matched} of {total} operations match.</p>
-        <ul className="plain">
-          {(data?.operations ?? []).map((o) => <OpCard key={o.id} op={o} onOpen={openOp} />)}
-        </ul>
+        <p className="meta" data-testid="match-count">{grouped ? `All ${total} operations, by service.` : `${matched} of ${total} operations match.`}</p>
+        {grouped ? (
+          grouped.map(([svc, ops]) => (
+            <section className="op-group" key={svc} data-testid="op-group">
+              <h3 className="op-group-h">
+                <button type="button" className="linkish" onClick={() => setCollapsed((c) => ({ ...c, [svc]: !c[svc] }))} aria-expanded={!collapsed[svc]} data-testid="op-group-toggle">
+                  {collapsed[svc] ? "▸" : "▾"} <Untrusted text={svc} />
+                </button>
+                <span className="meta"> {ops.length}</span>
+              </h3>
+              {!collapsed[svc] && (
+                <ul className="plain">
+                  {ops.map((o) => <OpCard key={o.id} op={o} onOpen={openOp} />)}
+                </ul>
+              )}
+            </section>
+          ))
+        ) : (
+          <ul className="plain">
+            {(data?.operations ?? []).map((o) => <OpCard key={o.id} op={o} onOpen={openOp} />)}
+          </ul>
+        )}
       </section>
       {open && (
         <section className="card" aria-labelledby="op-h" data-testid="op-detail">

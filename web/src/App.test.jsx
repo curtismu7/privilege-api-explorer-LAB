@@ -29,10 +29,17 @@ test("the Explorer page: search box, filters, and the operation list render", as
   expect(search).toBeInTheDocument();
   expect(screen.getByTestId("tag-filter")).toBeInTheDocument();
   expect(screen.getByTestId("method-filter")).toBeInTheDocument();
-  await waitFor(() => expect(screen.getByTestId("match-count")).toHaveTextContent(/4 of 447/));
-  const cards = screen.getAllByTestId("op-card");
-  expect(cards.length).toBe(4);
+  // Idle view: all operations, grouped into service categories (swagger-tag style).
+  await waitFor(() => expect(screen.getByTestId("match-count")).toHaveTextContent(/All 447 operations/));
+  const groups = screen.getAllByTestId("op-group");
+  expect(groups.length).toBe(2); // ApplicationService, UserService
+  expect(screen.getAllByTestId("op-card").length).toBe(4);
   expect(screen.getAllByTestId("method-GET").length).toBe(2);
+  // A search switches to the flat match list.
+  const user = userEvent.setup();
+  await user.type(search, "pi");
+  await waitFor(() => expect(screen.getByTestId("match-count")).toHaveTextContent(/4 of 447 operations match/));
+  expect(screen.queryByTestId("op-group")).toBeNull();
 });
 
 test("typing 'pi' in the search hits /api/spec with q=pi (the server does the substring match)", async () => {
@@ -49,7 +56,8 @@ test("open an operation, press Call, and the real-time result shows status, ms, 
   const user = userEvent.setup();
   render(<App />);
   await waitFor(() => expect(screen.getAllByTestId("op-card").length).toBe(4));
-  await user.click(screen.getAllByTestId("op-card")[0].querySelector("button"));
+  // The idle list is grouped by service; find the GET users card anywhere in the groups.
+  await user.click(screen.getAllByTestId("op-card").find((c) => c.textContent.includes("GET") && c.textContent.includes("users")).querySelector("button"));
   const detail = await screen.findByTestId("op-detail");
   expect(detail).toHaveTextContent("/api/{ObjectMeta.Tenant}/v1/users");
   expect(screen.getByTestId("param-ObjectMeta.Tenant")).toHaveValue(conn().tenant); // prefilled from the connection
@@ -67,7 +75,7 @@ test("a refused call (401 from the console) is shown as an error in the result p
   const user = userEvent.setup();
   render(<App />);
   await waitFor(() => expect(screen.getAllByTestId("op-card").length).toBe(4));
-  await user.click(screen.getAllByTestId("op-card")[0].querySelector("button"));
+  await user.click(screen.getAllByTestId("op-card").find((c) => c.textContent.includes("GET") && c.textContent.includes("users")).querySelector("button"));
   await user.click(await screen.findByTestId("call"));
   await waitFor(() => expect(screen.getByTestId("result-error")).toHaveTextContent(/login_required/));
   expect(screen.getByTestId("result-error")).toHaveTextContent(/check the API key and secret/);
