@@ -56,10 +56,10 @@ test("open an operation, press Call, and the real-time result shows status, ms, 
   const user = userEvent.setup();
   render(<App />);
   await waitFor(() => expect(screen.getAllByTestId("op-card").length).toBe(4));
-  // The idle list is grouped by service; find the GET users card anywhere in the groups.
-  await user.click(screen.getAllByTestId("op-card").find((c) => c.textContent.includes("GET") && c.textContent.includes("users")).querySelector("button"));
-  const detail = await screen.findByTestId("op-detail");
-  expect(detail).toHaveTextContent("/api/{ObjectMeta.Tenant}/v1/users");
+  // The runner lives inside the card now: expand the GET users card, then run it.
+  await user.click(screen.getAllByTestId("op-card").find((c) => c.textContent.includes("GET") && c.textContent.includes("users")).querySelector("[data-testid=op-open]"));
+  const detail = await screen.findByTestId("op-runner");
+  expect(detail.closest("[data-testid=op-card]")).toHaveTextContent("/api/{ObjectMeta.Tenant}/v1/users");
   expect(screen.getByTestId("param-ObjectMeta.Tenant")).toHaveValue(conn().tenant); // prefilled from the connection
   await user.click(screen.getByTestId("call"));
   await screen.findByTestId("result");
@@ -75,7 +75,7 @@ test("a refused call (401 from the console) is shown as an error in the result p
   const user = userEvent.setup();
   render(<App />);
   await waitFor(() => expect(screen.getAllByTestId("op-card").length).toBe(4));
-  await user.click(screen.getAllByTestId("op-card").find((c) => c.textContent.includes("GET") && c.textContent.includes("users")).querySelector("button"));
+  await user.click(screen.getAllByTestId("op-card").find((c) => c.textContent.includes("GET") && c.textContent.includes("users")).querySelector("[data-testid=op-open]"));
   await user.click(await screen.findByTestId("call"));
   await waitFor(() => expect(screen.getByTestId("result-error")).toHaveTextContent(/login_required/));
   expect(screen.getByTestId("result-error")).toHaveTextContent(/check the API key and secret/);
@@ -87,9 +87,9 @@ test("a destructive operation warns that writes must be enabled", async () => {
   render(<App />);
   await waitFor(() => expect(screen.getAllByTestId("op-card").length).toBe(4));
   const del = screen.getAllByTestId("op-card").find((c) => c.textContent.includes("DELETE"));
-  await user.click(del.querySelector("button"));
-  await screen.findByTestId("op-detail");
-  expect(screen.getByTestId("op-detail")).toHaveTextContent(/runs only when writes are enabled/);
+  await user.click(del.querySelector("[data-testid=op-open]"));
+  await screen.findByTestId("op-runner");
+  expect(screen.getByTestId("op-runner")).toHaveTextContent(/runs only when writes are enabled/);
 });
 
 test("Connections: the mock demo button creates a loopback connection and the test shows the credential check", async () => {

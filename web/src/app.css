@@ -138,3 +138,10 @@ th, td { text-align: left; vertical-align: top; padding: 6px 8px; border-bottom:
 /* Help page: numbered steps read as prose; keep the cards from stretching too wide. */
 main > .card ol { padding-left: 1.4rem; display: grid; gap: 8px; }
 main > .card ol li strong { color: var(--text, inherit); }
+
+/* Inline runner inside an operation card: parameters, body, run button and result in the card itself. */
+.op-card__summary { background: none; border: 0; padding: 0; cursor: pointer; font: inherit; text-align: left; display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
+.op-card__summary code { word-break: break-all; }
+.op-card--open { border-color: var(--accent); }
+.op-card__runner { margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--line); display: grid; gap: 8px; }
+.op-card__runner .op-card__summary { display: none; }
