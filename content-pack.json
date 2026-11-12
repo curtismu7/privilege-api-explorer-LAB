@@ -6,7 +6,7 @@
   "demo": {
     "id": "privilege-api-explorer",
     "name": "Privilege API Explorer LAB",
-    "catalog": "D3",
+    "catalog": "D131",
     "baseUrl": "http://localhost:7813",
     "doctor": "/api/health",
     "tags": [

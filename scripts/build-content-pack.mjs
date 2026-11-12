@@ -29,7 +29,7 @@ export function buildPack({ commit } = {}) {
     title: 'Privilege API Explorer LAB',
     version: pkg.version,
     ...(commit ? { source: { repo: 'privilege-api-explorer-LAB', commit } } : {}),
-    demo: { id: 'privilege-api-explorer', name: 'Privilege API Explorer LAB', catalog: 'D3', baseUrl: 'http://localhost:7813', doctor: '/api/health', tags: ['rest-api', 'privilege', 'admin-plane', 'read-only'] },
+    demo: { id: 'privilege-api-explorer', name: 'Privilege API Explorer LAB', catalog: 'D131', baseUrl: 'http://localhost:7813', doctor: '/api/health', tags: ['rest-api', 'privilege', 'admin-plane', 'read-only'] },
     glossary: readJson('content/terms.json').sort(byId),
     sources: [],
     cards: CARDS.map(({ href, ...c }) => ({ ...c, action: { type: 'route', href } })).sort(byId),

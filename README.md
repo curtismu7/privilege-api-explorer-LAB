@@ -4,7 +4,7 @@ A standalone app that signs in to a PingOne Privilege console with a user API ke
 
 Tier: Tester
 Repo: https://github.com/curtismu7/privilege-api-explorer-LAB
-Catalog: D3 (placeholder — the shelf owner assigns the real one)
+Catalog: D131
 
 > **Nothing here is verified against a cloud Privilege tenant.** Mock mode is an in-process mock of the Privilege console API. Real mode was verified once, by the owner, against a local desktop console (`local.procyon.ai:8643`) with a scoped key/secret pair: applications, users and pacpolicys answered 200; admin collections (`tenantapikeys`, `tenantprofile`) answer the console's own 401/500, which the explorer shows as-is. The header has a **Mock / Real** toggle and shows the mode; **Real is refused** until the owner opts in, and the banner on every tab, presenter mode included, names the mode.
 

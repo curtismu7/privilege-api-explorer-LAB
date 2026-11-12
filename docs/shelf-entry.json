@@ -10,7 +10,7 @@
       "composeFile": "privilege-api-explorer-LAB/docker-compose.yml",
       "composeOverlays": [],
       "notes": "Host-run: npm ci && npm run build && npm start (port 7813; npm run doctor checks it). Or: HOST_PORT=7813 docker compose up --build -d (published on 127.0.0.1 only). Mock mode needs no setup; Real is refused until the owner sets PRIVILEGE_EXPLORER_MODE=real. The composeFile is relative to the folder the demo repos sit in.",
-      "catalogId": "D3"
+      "catalogId": "D131"
     }
   ]
 }

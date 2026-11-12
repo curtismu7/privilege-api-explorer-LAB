@@ -47,6 +47,6 @@ Docker (OrbStack, never Docker Desktop): `HOST_PORT=7813 docker compose up --bui
 
 ## Shelf and content pack
 
-- Edit `content/terms.json`, then `npm run content-pack`. The catalog id (D3 placeholder until the shelf owner assigns one) appears in the shelf entry, the pack and the README; a test pins all three.
+- Edit `content/terms.json`, then `npm run content-pack`. The catalog id D131 appears in the shelf entry, the pack and the README; a test pins all three.
 - The shelf entry is `docs/shelf-entry.json` (port 7813, relative `composeFile`); `scripts/lib/shelf-registry-rules.mjs` is a copy of the shelf's rules. Change the port or id only with the shelf owner.
 - Run check-drift, check-css and conformance by hand: `bash ~/Development/AI-DEMO-Standalone/scripts/check-drift.sh .`, `node ~/Development/demo-kit-base/scripts/conformance.mjs . --new`.

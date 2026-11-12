@@ -37,7 +37,7 @@ test('README follows the README standard: title ends in LAB, plain Tier, Repo an
   assert.match(r.split('\n')[0], /^# .* LAB$/);
   assert.match(r, /^Tier: Tester$/m);
   assert.match(r, /^Repo: https:\/\/github\.com\/curtismu7\/privilege-api-explorer-LAB$/m);
-  assert.match(r, /^Catalog: D3/m);
+  assert.match(r, /^Catalog: D131/m);
   const at = (h) => r.indexOf(`\n## ${h}`);
   const order = ['What is simulated', 'Run from a clone', 'Real mode (owner-run)', 'Settings file', 'Ports, and what to do if the port is taken', 'Tests', 'Reset'].map(at);
   assert.ok(order.every((i) => i > 0), order.join());

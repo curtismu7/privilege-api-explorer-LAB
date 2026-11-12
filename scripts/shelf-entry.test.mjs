@@ -11,18 +11,18 @@ test('docs/shelf-entry.json passes the shelf registry rules (copied into scripts
   assert.deepEqual(shelfProblems(entry.demos), []);
 });
 
-test('the entry matches this app: id, catalog id D3 (also in the content pack and the README), port 7813, /api/health, a relative compose file', () => {
+test('the entry matches this app: id, catalog id D131 (also in the content pack and the README), port 7813, /api/health, a relative compose file', () => {
   const [d] = entry.demos;
   assert.equal(d.id, 'privilege-api-explorer');
-  assert.equal(d.catalogId, 'D3');
+  assert.equal(d.catalogId, 'D131');
   assert.equal(d.kind, 'Tester');
   assert.equal(d.composeFile, 'privilege-api-explorer-LAB/docker-compose.yml');
   assert.ok(!path.isAbsolute(d.composeFile), 'composeFile must be relative or a placeholder');
   assert.ok(!/\/Users\//.test(JSON.stringify(entry)), 'no absolute home path');
   assert.equal(d.url, 'http://localhost:7813');
   assert.equal(d.healthPath, '/api/health');
-  assert.equal(JSON.parse(read('../content-pack.json')).demo.catalog, 'D3');
-  assert.match(read('../README.md'), /^Catalog: D3/m);
+  assert.equal(JSON.parse(read('../content-pack.json')).demo.catalog, 'D131');
+  assert.match(read('../README.md'), /^Catalog: D131/m);
   const pkg = JSON.parse(read('../package.json'));
   assert.ok(pkg.scripts.start && pkg.scripts.doctor);
   assert.match(read('../docker-compose.yml'), /127\.0\.0\.1:\$\{HOST_PORT:-7813\}:7813/);
