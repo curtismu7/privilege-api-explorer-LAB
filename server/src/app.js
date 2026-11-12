@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import express from 'express';
 import { buildRequest, createClient, CLASS_BY_METHOD } from './client.js';
@@ -135,6 +136,28 @@ export function createApp({ env = process.env, lab = labAllowedHosts(env), store
     } else if (realGate) return refuseReal(res);
     try { const c = store.create(req.body || {}); health.refresh(); res.status(201).json(view(c)); }
     catch (err) { res.status(400).json({ error: 'bad_request', message: scrub(err.message, [req.body?.apiSecret]) }); }
+  });
+  // One-click Real preset: the connection comes from the shared settings file (console URL, tenant and CA from the
+  // privilege-logging keys; the API key/secret pair from this app's own keys). The secret passes through this route
+  // once, into the store (write-only); it is never returned or logged.
+  app.post('/api/presets/settings', (req, res) => {
+    if (realGate) return refuseReal(res);
+    const val = (k) => { const v = env[k]; return typeof v === 'string' && v.trim() ? v.trim() : null; };
+    const url = val('PRIV_LOG_CONSOLE_URL'); const tenant = val('PRIV_LOG_CONSOLE_TENANT');
+    const caRaw = val('PRIV_LOG_CONSOLE_CA');
+    const ca = caRaw ? (caRaw.startsWith('~') ? path.join(os.homedir(), caRaw.slice(1)) : caRaw) : null;
+    const key = val('PRIV_EXPLORER_API_KEY'); const secret = val('PRIV_EXPLORER_API_SECRET');
+    if (!url || !tenant || !key || !secret) {
+      return res.status(409).json({ error: 'needs_setup', message: 'Set PRIV_EXPLORER_API_KEY and PRIV_EXPLORER_API_SECRET (plus PRIV_LOG_CONSOLE_URL and PRIV_LOG_CONSOLE_TENANT) in the shared settings file (~/Development/.env, mode 600) and restart.' });
+    }
+    const exists = store.list().some((c) => c.url === url && c.tenant === tenant);
+    if (exists) return res.status(200).json({ ok: true, existing: true, connection: view(store.list().find((c) => c.url === url && c.tenant === tenant)) });
+    try {
+      const c = store.create({ kind: 'privilege', label: `Privilege console (${new URL(url).hostname})`, url, tenant, apiKey: key, apiSecret: secret, insecureTls: Boolean(ca) });
+      health.refresh();
+      audit.record({ conn: view(c), op: 'preset-settings', outcome: 'ok', note: 'connection created from the shared settings file' });
+      res.status(201).json({ ok: true, existing: false, connection: view(c) });
+    } catch (err) { res.status(400).json({ error: 'bad_request', message: scrub(err.message, [secret]) }); }
   });
   app.delete('/api/connections/:id', h((_req, res, conn) => { store.remove(conn.id); health.refresh(); res.json({ ok: true }); }));
   app.post('/api/connections/:id/settings', h((req, res, conn) => res.json(view(store.update(conn.id, { allowWrites: req.body?.allowWrites })))));

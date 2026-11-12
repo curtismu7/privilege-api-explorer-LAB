@@ -6,7 +6,7 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
-const SKIP = new Set(['node_modules', 'dist', '.git', '.data']);
+const SKIP = new Set(['node_modules', 'dist', '.git', '.data', '.env']); // .env: the owner's local secret file (mode 600, git-ignored), same treatment as .data
 const PLACEHOLDER = '11111111-2222-4333-8444-555555555555';
 function* walk(d) { for (const e of fs.readdirSync(d, { withFileTypes: true })) { if (SKIP.has(e.name)) continue; const p = path.join(d, e.name); if (e.isDirectory()) yield* walk(p); else if (!/package-lock\.json$/.test(p)) yield p; } }
 

@@ -51,14 +51,49 @@ test('modeFrom: mock by default, real only when asked, anything else is an error
 
 test('the shared settings file: only the listed keys are taken, nothing else enters the environment, no file means defaults', () => {
   const dir = tmpDir(); const file = path.join(dir, '.env');
-  fs.writeFileSync(file, `${MODE_KEY}=real\nPINGONE_ENVIRONMENT_ID=${TENANT}\nMODE=real\nPORT=1\nOTHER_APP_KEY=x\n`, { mode: 0o600 });
-  assert.deepEqual(SETTINGS_KEYS.sort(), ['PRIVILEGE_EXPLORER_MODE']);
-  assert.deepEqual(Object.keys(readSharedSettings(file)).sort(), SETTINGS_KEYS);
+  fs.writeFileSync(file, `${MODE_KEY}=real\nPINGONE_ENVIRONMENT_ID=${TENANT}\nMODE=real\nPORT=1\nOTHER_APP_KEY=x\nPRIV_EXPLORER_API_KEY=k\nPRIV_EXPLORER_API_SECRET=s\nPRIV_LOG_CONSOLE_URL=https://console.example\nPRIV_LOG_CONSOLE_TENANT=${TENANT}\nPRIV_LOG_CONSOLE_CA=\n`, { mode: 0o600 });
+  assert.deepEqual(SETTINGS_KEYS.sort(), ['PRIVILEGE_EXPLORER_MODE', 'PRIV_EXPLORER_API_KEY', 'PRIV_EXPLORER_API_SECRET', 'PRIV_LOG_CONSOLE_CA', 'PRIV_LOG_CONSOLE_TENANT', 'PRIV_LOG_CONSOLE_URL'].sort());
+  assert.deepEqual(Object.keys(readSharedSettings(file)).sort(), SETTINGS_KEYS.filter((k) => k !== 'PRIV_LOG_CONSOLE_CA').sort(), 'an empty value is dropped');
   const env = applySharedSettings({}, file);
   assert.equal(env[MODE_KEY], 'real');
+  assert.equal(env.PRIV_EXPLORER_API_KEY, 'k');
+  assert.equal(env.PRIV_EXPLORER_API_SECRET, 's');
   for (const k of ['PINGONE_ENVIRONMENT_ID', 'MODE', 'PORT', 'OTHER_APP_KEY']) assert.equal(env[k], undefined, k);
   assert.deepEqual(readSharedSettings(path.join(dir, 'missing')), {});
   assert.deepEqual(applySharedSettings({ STANDALONE_ENV: path.join(dir, 'missing') }), { STANDALONE_ENV: path.join(dir, 'missing') });
+});
+
+test('the settings preset: creates the connection from the shared settings, idempotent, secret never returned', async () => {
+  const t = await startApp({ env: { PRIV_LOG_CONSOLE_URL: 'https://console.example', PRIV_LOG_CONSOLE_TENANT: TENANT, PRIV_EXPLORER_API_KEY: 'preset-key', PRIV_EXPLORER_API_SECRET: 'preset-secret-sentinel' } });
+  try {
+    const r = await t.call('POST', '/api/presets/settings');
+    assert.equal(r.status, 201, r.text);
+    assert.equal(r.json.connection.apiSecret, 'set');
+    assert.ok(!r.text.includes('preset-secret-sentinel'), 'the secret never reaches the response');
+    assert.equal(r.json.connection.insecureTls, undefined, 'no CA configured: the console must be a real certificate');
+    const again = await t.call('POST', '/api/presets/settings');
+    assert.equal(again.status, 200); assert.equal(again.json.existing, true);
+    assert.equal(t.app.locals.store.list().length, 1, 'no duplicate connection');
+    // a CA path flips insecureTls on
+    const t2 = await startApp({ env: { PRIV_LOG_CONSOLE_URL: 'https://console.example', PRIV_LOG_CONSOLE_TENANT: TENANT, PRIV_EXPLORER_API_KEY: 'k', PRIV_EXPLORER_API_SECRET: 's', PRIV_LOG_CONSOLE_CA: '~/no-such-ca.pem' } });
+    try {
+      const r2 = await t2.call('POST', '/api/presets/settings');
+      assert.equal(r2.json.connection.insecureTls, true);
+    } finally { await t2.close(); }
+  } finally { await t.close(); }
+});
+
+test('the settings preset: missing keys answer 409 with what to set; Real refused without the opt-in', async () => {
+  const t = await startApp({ env: { PRIVILEGE_EXPLORER_MODE: 'real' } }); // no keys
+  try {
+    const r = await t.call('POST', '/api/presets/settings');
+    assert.equal(r.status, 409); assert.match(r.json.message, /PRIV_EXPLORER_API_KEY/);
+  } finally { await t.close(); }
+  const m = await startApp({ env: { PRIVILEGE_EXPLORER_MODE: 'mock', PRIV_EXPLORER_API_KEY: 'k', PRIV_EXPLORER_API_SECRET: 's', PRIV_LOG_CONSOLE_URL: 'https://console.example', PRIV_LOG_CONSOLE_TENANT: TENANT } });
+  try {
+    const refused = await m.call('POST', '/api/presets/settings');
+    assert.equal(refused.status, 403); assert.equal(refused.json.error, 'real_refused');
+  } finally { await m.close(); }
 });
 
 test('an unknown route and a malformed body answer JSON, never an HTML error page that echoes the path', async () => {

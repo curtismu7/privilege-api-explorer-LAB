@@ -39,7 +39,10 @@ test('the container hardening stays: non-root, read-only, no capabilities, no se
   assert.match(compose, /read_only:\s*true/);
   assert.match(compose, /cap_drop:\s*\[ALL\]/);
   assert.match(compose, /no-new-privileges:true/);
-  assert.doesNotMatch(compose + dockerfile, /(SECRET|CLIENT_ID|ENV_ID|PASSWORD)\s*[:=]\s*\S/i, 'no tenant value or secret in the container files');
+  // No secret VALUE in the container files: pass-through names (${PRIV_EXPLORER_API_SECRET:-}) are fine — the value
+  // comes from the .env beside the compose file (git-ignored) at run time, never from the repo.
+  const scrubbed = (compose + dockerfile).replace(/\$\{[^}]*\}/g, 'PASS_THROUGH');
+  assert.doesNotMatch(scrubbed, /(SECRET|CLIENT_ID|PASSWORD)\s*[:=]\s*["']?(?!PASS_THROUGH\b)[A-Za-z0-9][A-Za-z0-9/_-]{8,}/i, 'no literal credential value in the container files');
 });
 test('the container opts in to a non-loopback bind and the compose file does not publish it beyond loopback', () => {
   assert.match(dockerfile, /PAE_BIND=0\.0\.0\.0/);

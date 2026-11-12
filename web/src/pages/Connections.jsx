@@ -70,6 +70,12 @@ function ConnCard({ c, active, onSelect, onChange, onTest, say }) {
 
 export default function Connections({ mode, conns, activeId, onSelect, reload, tests, testBusy, runTest, say }) {
   const active = conns.find((c) => c.id === activeId);
+  async function useSettings() {
+    const r = await api.post("/api/presets/settings");
+    if (!r.ok) { say(r.json?.message || "Could not build the connection from the settings."); return; }
+    if (r.json.existing) { say("The connection from the saved settings already exists."); onSelect(r.json.connection.id); return; }
+    say("Connection from saved settings added."); await reload(); onSelect(r.json.connection.id); runTest(r.json.connection.id);
+  }
   async function demo() {
     // The in-process mock: the connection's URL points at it after the server started it. The demo uses the mock's
     // accepted credential pair; the server answers with its sample tenant.
@@ -96,6 +102,16 @@ export default function Connections({ mode, conns, activeId, onSelect, reload, t
       )}
       {conns.length > 0 && <ul className="plain">{conns.map((c) => <ConnCard key={c.id} c={c} active={c.id === activeId} onSelect={onSelect} onChange={reload} onTest={runTest} say={say} />)}</ul>}
       {active && <HealthCard conn={active} test={tests[active.id]} busy={testBusy === active.id} />}
+      {mode === "real" && (
+        <section className="card" aria-labelledby="preset-h">
+          <h2 id="preset-h">Use the saved settings</h2>
+          <p>The connection can come from the shared settings file (console URL, tenant and the API key pair). The secret stays write-only: it moves from the settings file into this app's store and is never shown.</p>
+          <div className="row wrap">
+            <button type="button" className="primary" onClick={useSettings} data-testid="use-settings">Add connection from saved settings</button>
+          </div>
+          <p className="hint">Missing keys answer with what to set: PRIV_EXPLORER_API_KEY and PRIV_EXPLORER_API_SECRET (plus PRIV_LOG_CONSOLE_URL and PRIV_LOG_CONSOLE_TENANT) in ~/Development/.env, then restart.</p>
+        </section>
+      )}
       {mode === "real" && <Wizard onCreated={async (c) => { await reload(); onSelect(c.id); }} say={say} />}
     </>
   );

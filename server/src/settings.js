@@ -1,12 +1,14 @@
 // The one shared settings file (rulebook): ~/Development/.env, or the path in STANDALONE_ENV. Every standalone app reads it, so it
 // holds other apps' keys too. This app takes ONLY the keys listed below and ignores everything else: nothing else from the file ever
 // enters the server's environment, and no value is printed. Read only; the app never writes it.
+// PRIV_EXPLORER_API_SECRET is a real credential: it is read so the Real preset can save the connection, but it is never
+// returned, logged or echoed (the store holds it write-only; redact.js scrubs it everywhere).
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { parseEnv } from 'node:util';
 
-export const SETTINGS_KEYS = ['PRIVILEGE_EXPLORER_MODE'];
+export const SETTINGS_KEYS = ['PRIVILEGE_EXPLORER_MODE', 'PRIV_EXPLORER_API_KEY', 'PRIV_EXPLORER_API_SECRET', 'PRIV_LOG_CONSOLE_URL', 'PRIV_LOG_CONSOLE_TENANT', 'PRIV_LOG_CONSOLE_CA'];  // the last three are shared with privilege-logging-LAB
 export const settingsPath = (env = process.env) => env.STANDALONE_ENV || path.join(os.homedir(), 'Development', '.env');
 
 export function readSharedSettings(file) {

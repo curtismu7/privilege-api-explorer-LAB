@@ -18,6 +18,13 @@ services:
       LAB_ALLOWED_HOSTS: ${LAB_ALLOWED_HOSTS:-privilege-api-explorer.local.ping-devops.com}
       PAE_DATA_DIR: /data
       PRIVILEGE_EXPLORER_MODE: ${PRIVILEGE_EXPLORER_MODE:-mock}
+      PRIV_EXPLORER_API_KEY: ${PRIV_EXPLORER_API_KEY:-}
+      PRIV_EXPLORER_API_SECRET: ${PRIV_EXPLORER_API_SECRET:-}
+      PRIV_LOG_CONSOLE_URL: ${PRIV_LOG_CONSOLE_URL:-}
+      PRIV_LOG_CONSOLE_TENANT: ${PRIV_LOG_CONSOLE_TENANT:-}
+      PRIV_LOG_CONSOLE_CA: ${PRIV_LOG_CONSOLE_CA:-}
+    extra_hosts:
+      - "local.procyon.ai:host-gateway"
     volumes:
       - pae-data:/data
     read_only: true
