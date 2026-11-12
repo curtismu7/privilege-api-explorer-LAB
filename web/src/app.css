@@ -167,4 +167,4 @@ main > .card ol li strong { color: var(--text, inherit); }
 .op-card__runner .op-card .card, .op-card__runner [data-testid="result"] { margin: 4px 0 0; padding: 8px 10px; }
 .op-card__runner [data-testid="result"] h2 { margin: 0 0 4px; font-size: 0.95rem; }
 .op-card__runner .hint { margin: 2px 0 0; }
-@media (max-width: 700px) { .op-runner__params { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 600px) { .op-runner__params { grid-template-columns: minmax(0, 1fr); } }
