@@ -4,7 +4,11 @@
    app's (a known gap against the BEM rule); the new ones (top__, notice, flow-) follow it. */
 :root[data-present="1"] body { font-size: 17px; }
 
-.top, main, .foot { max-width: min(100%, 64rem); margin: 0 auto; }
+/* App shell (P1): Core Dark bar in both themes — TopMenu buttons are white-on-dark */
+.top { max-width: none; width: 100%; background: var(--box-dark); color: var(--on-box); border-bottom: 3px solid transparent; border-image: var(--accent-gradient) 1; padding: 0.65rem 1.25rem; position: relative; }
+.top > * { max-width: min(100%, 64rem); margin-left: auto; margin-right: auto; }
+.top :focus-visible { outline: 3px solid var(--on-box); outline-offset: 2px; }
+main, .foot { max-width: min(100%, 64rem); margin: 0 auto; }
 main { padding: 8px 0 32px; outline: none; }
 .skip { position: absolute; left: -999px; top: 0; padding: 8px 16px; background: var(--surface); color: var(--text); border: 2px solid var(--accent); z-index: 50; }
 .skip:focus { left: 8px; top: 8px; }
@@ -145,3 +149,9 @@ main > .card ol li strong { color: var(--text, inherit); }
 .op-card--open { border-color: var(--accent); }
 .op-card__runner { margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--line); display: grid; gap: 8px; }
 .op-card__runner .op-card__summary { display: none; }
+
+/* Connection status line on the Connections page: bold, green, larger — the first thing you read. */
+.conn-status { font-weight: 700; font-size: 1.15rem; margin: 8px 0 0; }
+.conn-status--ok { color: var(--status-ok); }
+.conn-status--pending { color: var(--muted); font-weight: 500; }
+.conn-status--bad { font-size: 1.15rem; }

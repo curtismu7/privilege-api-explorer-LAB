@@ -14,9 +14,9 @@ export default function HealthCard({ conn, test, busy }) {
         <dt>API secret</dt><dd>{conn.apiSecret}</dd>
       </dl>
       {busy && <p>Checking the credential…</p>}
-      {!busy && !test && <p>Not tested yet. Press Test connection.</p>}
-      {!busy && test && test.ok && <p data-state="ok" role="status">Credential accepted (HTTP {test.status}, {test.ms} ms) on <code>{test.probed}</code>.</p>}
-      {!busy && test && !test.ok && <p className="err-text" role="alert">{test.error}: {test.message}</p>}
+      {!busy && !test && <p className="conn-status conn-status--pending">Not tested yet. Press Test connection.</p>}
+      {!busy && test && test.ok && <p className="conn-status conn-status--ok" data-state="ok" role="status" data-testid="conn-status-ok">Credential accepted (HTTP {test.status}, {test.ms} ms) on <code>{test.probed}</code>.</p>}
+      {!busy && test && !test.ok && <p className="conn-status conn-status--bad err-text" role="alert">{test.error}: {test.message}</p>}
     </section>
   );
 }
