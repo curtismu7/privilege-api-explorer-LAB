@@ -16,7 +16,7 @@ function cleanUrl(raw) {
   if (u.protocol === 'http:' && !isLoopbackHost(u.hostname)) throw new Error('url must be https (http is allowed only for a loopback address)');
   if (isPrivateLiteral(u.hostname)) throw new Error('url must not be a private or link-local address');
   if (u.username || u.password) throw new Error('put credentials in the key/secret fields, not in the URL');
-  if (u.pathname && u.pathname !== '/' && u.pathname !== '/') throw new Error('url must be the console origin only (no path)');
+  if (u.pathname && u.pathname !== '/') throw new Error('url must be the console origin only (no path)');
   return u.origin;
 }
 const str = (v, n = 200) => String(v ?? '').trim().slice(0, n);

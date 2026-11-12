@@ -65,9 +65,11 @@ function Shell() {
 
   const reload = useCallback(async () => { const r = await api.get("/api/connections"); if (r.ok) setConns(r.json.connections); return r.ok ? r.json.connections : []; }, []);
   const select = useCallback((id) => { setActiveId(id); store.set("pae.active", id); }, []);
-  // The mode decides which saved connections the page works with: Mock uses the in-process mock console (the
-  // connection whose url points at the loopback mock), Real uses the real consoles.
-  const modeConns = conns.filter((c) => (mode === "mock") === (c.label || "").includes("Mock console"));
+  // The mode decides which saved connections the page works with: Mock uses the in-process mock console (a connection
+  // whose URL is loopback — the same criterion the server uses), Real uses the real consoles. Never the label: labels
+  // are free text.
+  const isLoopbackConn = (c) => { try { return ["127.0.0.1", "localhost", "::1"].includes(new URL(c.url).hostname); } catch { return false; } };
+  const modeConns = conns.filter((c) => (mode === "mock") === isLoopbackConn(c));
   const active = modeConns.find((c) => c.id === activeId) || modeConns[0] || null;
 
   const runTest = useCallback(async (id) => {
