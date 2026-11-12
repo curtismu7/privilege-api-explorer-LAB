@@ -73,7 +73,7 @@ export default function Connections({ mode, conns, activeId, onSelect, reload, t
   async function demo() {
     // The in-process mock: the connection's URL points at it after the server started it. The demo uses the mock's
     // accepted credential pair; the server answers with its sample tenant.
-    const r = await api.post("/api/mock-url");
+    const r = await api.get("/api/mock-url");
     if (!r.ok) { say("Could not reach the mock."); return; }
     const body = { kind: "privilege", label: "Mock console (sample tenant)", url: r.json.base, tenant: r.json.tenant, apiKey: r.json.apiKey, apiSecret: r.json.apiSecret };
     const c = await api.post("/api/connections", body);
