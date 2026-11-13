@@ -87,6 +87,32 @@ export default function Help() {
         </dl>
       </section>
 
+      <section className="card" aria-labelledby="help-agent">
+        <h2 id="help-agent">If the Privilege desktop agent shows &ldquo;unregistered&rdquo;</h2>
+        <p>
+          The local desktop console (<code>local.procyon.ai:8643</code>) is served by the PingOne Privilege
+          desktop app&rsquo;s background agent. When its device record is deleted or unapproved on the cloud
+          side, the local console stops serving and this app&rsquo;s Real connections fail with
+          <code> the console did not answer in time</code>.
+        </p>
+        <dl>
+          <dt>How to tell</dt>
+          <dd>The desktop app shows the agent as <strong>unregistered</strong> (or its diagnostics print
+          <code> Device &hellip; not found</code>), and <code>/Library/Logs/Procyon/procyon-agent.log</code> repeats
+          <code>Error getting the device: 500 &hellip; &quot;Device &lt;id&gt; not found&quot;</code> every ~2 seconds.</dd>
+          <dt>Fix (console approval &mdash; the agent cannot self-heal)</dt>
+          <dd>Sign in to the cloud console (<code>console.pingone.com/?env=&lt;privilege-env-id&gt;</code> &rarr; PingOne
+          Privilege &rarr; <strong>Devices</strong>), find this machine&rsquo;s device (<code>mac-&hellip;</code>, type MAC) and
+          <strong>Approve</strong> it. If no pending row exists, toggle the agent off/on in the desktop app to mint a fresh
+          certificate request, then approve. The agent picks it up within seconds and the local console serves again &mdash;
+          no restart of this app needed.</dd>
+          <dt>If it keeps coming back</dt>
+          <dd>The deletes are console-side (admin, sync sweep, or a guard after network drops). Check
+          <code> grep &quot;Delete request recieved&quot; /Library/Logs/Procyon/procyon-agent*.log</code> for the times and
+          raise it with the tenant admin &mdash; re-approving treats the symptom only.</dd>
+        </dl>
+      </section>
+
       <section className="card" aria-labelledby="help-safe">
         <h2 id="help-safe">What this app does with the secret</h2>
         <p>
