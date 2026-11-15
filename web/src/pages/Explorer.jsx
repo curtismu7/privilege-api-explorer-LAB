@@ -1,9 +1,12 @@
 import React, { useMemo, useState } from "react";
 import * as api from "../api.js";
 import { Untrusted } from "../lib/Untrusted.jsx";
-import { classOf, pretty } from "../lib/format.js";
+import { classOf } from "../lib/format.js";
+import Json from "../components/JsonPane.jsx";
 
 const METHODS = ["GET", "POST", "PUT", "DELETE", "PATCH"];
+// The keys a reader looks for in a console response (the mock and the real console share the imodel shape: ObjectMeta + Spec).
+const RESULT_HOT = ["Kind", "State", "Enabled", "Scopes", "NotAfter", "Issuer", "Audience", "ActionMap"];
 
 function MethodBadge({ m }) {
   return <span className={`badge badge--${classOf({ method: m })}`} data-testid={`method-${m}`}>{m}</span>;
@@ -27,7 +30,7 @@ export function Result({ result }) {
             <dt>Path called</dt><dd><code data-testid="result-path"><Untrusted text={result.path} /></code></dd>
             <dt>Session id</dt><dd><code><Untrusted text={result.sessionId} /></code></dd>
           </dl>
-          <pre data-testid="result-body"><Untrusted text={pretty(result.body)} /></pre>
+          <Json value={result.body} label="Response body" testId="result-body" hot={RESULT_HOT} />
         </>
       )}
     </section>
