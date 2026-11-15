@@ -3,9 +3,11 @@ import userEvent from "@testing-library/user-event";
 import React from "react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import App from "./App.jsx";
+import { Result } from "./pages/Explorer.jsx";
+import { setJsonView } from "./components/JsonPane.jsx";
 import { conn, fakeApi, REAL_REFUSED } from "./test-helpers.js";
 
-beforeEach(() => { window.location.hash = ""; try { localStorage.clear(); } catch { /* none */ } delete document.documentElement.dataset.present; });
+beforeEach(() => { setJsonView("form"); window.location.hash = ""; try { localStorage.clear(); } catch { /* none */ } delete document.documentElement.dataset.present; });
 afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 const go = (h) => { window.location.hash = h; window.dispatchEvent(new HashChangeEvent("hashchange")); };
 
@@ -66,8 +68,31 @@ test("open an operation, press Call, and the real-time result shows status, ms, 
   await waitFor(() => expect(screen.getByTestId("result-status")).toHaveTextContent("200"));
   expect(screen.getByTestId("result-ms")).toHaveTextContent("15 ms");
   expect(screen.getByTestId("result-path")).toHaveTextContent("/api/11111111-2222-4333-8444-555555555555/v1/users");
+  // The body is a JsonPane: Form by default (a label and a value per field), the exact JSON text under the JSON button.
+  const box = screen.getByTestId("result-body-box");
+  expect(within(box).getByRole("button", { name: "Form" })).toHaveAttribute("aria-pressed", "true");
+  expect(within(box).getByRole("button", { name: "JSON" })).toHaveAttribute("aria-pressed", "false");
   expect(screen.getByTestId("result-body")).toHaveTextContent("users-sample-1");
+  await user.click(within(box).getByRole("button", { name: "JSON" }));
+  expect(screen.getByTestId("result-body").tagName).toBe("PRE");
+  expect(screen.getByTestId("result-body")).toHaveTextContent('"Name": "users-sample-1"');
   expect(state.calls.some((c) => c.url === "/api/connections/c1/call" && c.body.opId === "op-1")).toBe(true);
+});
+
+test("the result body marks this lab's important keys (Kind, State, Scopes ...) in both views, and the pane has no scroll cap", () => {
+  const body = { Users: [{ ObjectMeta: { Kind: "User", Name: "u1" }, Spec: { State: "pending", Scopes: ["mcp"], Notes: "x" } }] };
+  const { container } = render(<Result result={{ status: 200, ms: 3, path: "/api/t/v1/users", sessionId: "s1", body }} />);
+  const hotRows = () => [...container.querySelectorAll('.jform__row[data-hot="true"]')].map((r) => r.textContent);
+  expect(hotRows().some((t) => t.startsWith("Kind"))).toBe(true);
+  expect(hotRows().some((t) => t.startsWith("State"))).toBe(true);
+  expect(hotRows().some((t) => t.startsWith("Notes"))).toBe(false);
+  setJsonView("raw");
+  cleanup();
+  const raw = render(<Result result={{ status: 200, ms: 3, path: "/api/t/v1/users", sessionId: "s1", body }} />).container;
+  const hotText = [...raw.querySelectorAll(".jtok--hot")].map((n) => n.textContent);
+  expect(hotText).toContain('"Kind"');
+  expect(hotText).toContain('"State"');
+  expect(hotText).not.toContain('"Notes"');
 });
 
 test("a refused call (401 from the console) is shown as an error in the result pane", async () => {

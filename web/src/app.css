@@ -158,11 +158,10 @@ main > .card ol li strong { color: var(--text, inherit); }
 
 /* The inline runner (inside an operation card): compact. Many parameters must not blow the page up:
    - parameter fields flow in a responsive multi-column grid, tight margins;
-   - the result body is capped at a fixed height with its own scroll;
+   - the result body (a JsonPane) shows in full, no cap and no scroll;
    - the result card inside the runner loses its outer margins/padding. */
 .op-card__runner .field { margin: 4px 0; }
 .op-runner__params { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 2px 12px; }
-.op-card__runner pre[data-testid="result-body"] { max-height: 220px; overflow: auto; margin: 4px 0 0; }
 .op-card__runner .kv { grid-template-columns: max-content minmax(0, 1fr); gap: 2px 12px; margin: 4px 0; }
 .op-card__runner .op-card .card, .op-card__runner [data-testid="result"] { margin: 4px 0 0; padding: 8px 10px; }
 .op-card__runner [data-testid="result"] h2 { margin: 0 0 4px; font-size: 0.95rem; }
