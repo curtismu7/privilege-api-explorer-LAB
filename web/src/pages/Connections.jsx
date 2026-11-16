@@ -5,10 +5,6 @@ import { Untrusted } from "../lib/Untrusted.jsx";
 
 const EMPTY = { kind: "privilege", label: "", url: "", tenant: "", apiKey: "", apiSecret: "", insecureTls: false };
 
-function Field({ label, children, hint }) {
-  return <label className="field">{label}{children}{hint && <small>{hint}</small>}</label>;
-}
-
 function Wizard({ onCreated, say }) {
   const [f, setF] = useState(EMPTY);
   const [err, setErr] = useState("");
@@ -25,22 +21,25 @@ function Wizard({ onCreated, say }) {
   return (
     <form className="card" onSubmit={submit} aria-labelledby="wiz-h">
       <h2 id="wiz-h">Add a Privilege console connection</h2>
-      <Field label="Name (optional)"><input value={f.label} onChange={set("label")} maxLength={80} placeholder="Local Privilege desktop console" /></Field>
-      <Field label="Console origin" hint="The origin only, no path. Example: https://local.procyon.ai:8643 (http is allowed on loopback only).">
+      <label className="field">Name (optional)<input value={f.label} onChange={set("label")} maxLength={80} placeholder="Local Privilege desktop console" /></label>
+      <label className="field">Console origin
         <input value={f.url} onChange={set("url")} required placeholder="https://local.procyon.ai:8643" spellCheck="false" />
-      </Field>
-      <Field label="Tenant id" hint="The Privilege tenant UUID (shown in the console URL). Not a secret.">
+        <small>The origin only, no path. Example: https://local.procyon.ai:8643 (http is allowed on loopback only).</small>
+      </label>
+      <label className="field">Tenant id
         <input value={f.tenant} onChange={set("tenant")} required spellCheck="false" autoComplete="off" />
-      </Field>
+        <small>The Privilege tenant UUID (shown in the console URL). Not a secret.</small>
+      </label>
       <div className="grid2">
-        <Field label="API key" hint="Settings → For Developers."><input value={f.apiKey} onChange={set("apiKey")} required spellCheck="false" autoComplete="off" /></Field>
-        <Field label="API secret" hint="Write-only: kept on this machine's server, never shown again.">
+        <label className="field">API key<input value={f.apiKey} onChange={set("apiKey")} required spellCheck="false" autoComplete="off" /><small>Settings → For Developers.</small></label>
+        <label className="field">API secret
           <input type="password" value={f.apiSecret} onChange={set("apiSecret")} required autoComplete="new-password" />
-        </Field>
+          <small>Write-only: kept on this machine's server, never shown again.</small>
+        </label>
       </div>
       <label className="field"><input type="checkbox" checked={f.insecureTls} onChange={(e) => setF((x) => ({ ...x, insecureTls: e.target.checked }))} /> The console uses a self-signed certificate (allow it for this connection)</label>
       {err && <p className="err-text" role="alert">{err}</p>}
-      <button type="submit" className="primary">Save connection</button>
+      <button type="submit">Save connection</button>
     </form>
   );
 }

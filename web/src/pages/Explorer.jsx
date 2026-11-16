@@ -46,10 +46,10 @@ function OpCard({ op, values, setValues, body, setBody, bodyErr, setBodyErr, bus
   return (
     <li className={`card op-card${expanded ? " op-card--open" : ""}`} data-testid="op-card">
       <div className="row between">
-        <button type="button" className="op-card__summary" onClick={onToggle} aria-expanded={expanded} data-testid="op-toggle">
+        <button type="button" className="op-card__summary" onClick={onToggle} aria-expanded={expanded} aria-label={`${op.method} ${op.path}`} data-testid="op-toggle">
           <MethodBadge m={op.method} /> <code><Untrusted text={op.path} /></code>
         </button>
-        <button type="button" className={expanded ? undefined : "primary"} onClick={onToggle} data-testid="op-open">
+        <button type="button" onClick={onToggle} data-testid="op-open">
           {expanded ? "Close" : "Run…"}
         </button>
       </div>
