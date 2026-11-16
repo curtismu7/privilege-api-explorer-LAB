@@ -110,32 +110,32 @@ function Shell() {
   return (
     <>
       <a className="skip" href="#main" onClick={(e) => { e.preventDefault(); document.getElementById("main")?.focus(); }}>Skip to content</a>
-      <header className="top">
-        <Banner mode={mode} conn={active} />
-        <div className="top__bar">
-          <h1 className="top__title">Privilege API Explorer LAB</h1>
-          <div className="top__tools">
-            <TopMenu
-              mode={{ value: mode, onChange: setMode, realAvailable: info ? realOk : null, realHint: info?.real?.needs?.length ? `Real is refused (${(info.real.failed ?? []).join(", ")}). ${info.real.needs.join(" ")}` : undefined }}
-              theme={{ value: theme, onChange: setTheme }}
-              fontSize={{ value: fontStep, onChange: setFontStep }}
-              present={{ active: present, onToggle: () => setPresent(!present) }}
-              shelfUrl="https://local.ping-devops.com:8443/"
-              help={{ href: "#/help", onClick: (e) => { e.preventDefault(); window.location.hash = "#/help"; } }}
-              version={VERSION}
-              onReset={reset}
-            >
-              <span className="chip" data-testid="mode">Mode: {mode}</span>
-            </TopMenu>
-          </div>
-        </div>
-        {refusal && <p className="notice" data-state="bad" role="alert" data-testid="refusal">{refusal}</p>}
-        <nav className="top__nav" aria-label="Pages">
-          {NAV.map(([id, label]) => <a key={id} className="top__link" href={`#/${id}`} aria-current={route.page === id ? "page" : undefined}>{label}</a>)}
+      <header className="shell-bar">
+        <span className="shell-brand">
+          <span className="shell-logo" aria-hidden="true">PA</span>
+          <span className="shell-name">Privilege API Explorer LAB</span>
+          <span className={`shell-badge${mode === "real" ? " shell-badge--real" : ""}`} data-testid="mode">Mode: {mode}</span>
+        </span>
+        <nav className="shell-nav" aria-label="Pages">
+          {NAV.map(([id, label]) => <a key={id} href={`#/${id}`} aria-current={route.page === id ? "page" : undefined}>{label}</a>)}
         </nav>
+        <TopMenu
+          mode={{ value: mode, onChange: setMode, realAvailable: info ? realOk : null, realHint: info?.real?.needs?.length ? `Real is refused (${(info.real.failed ?? []).join(", ")}). ${info.real.needs.join(" ")}` : undefined }}
+          theme={{ value: theme, onChange: setTheme }}
+          fontSize={{ value: fontStep, onChange: setFontStep }}
+          present={{ active: present, onToggle: () => setPresent(!present) }}
+          shelfUrl="https://local.ping-devops.com:8443/"
+          help={{ href: "#/help", onClick: (e) => { e.preventDefault(); window.location.hash = "#/help"; } }}
+          version={VERSION}
+          onReset={reset}
+        />
       </header>
       <PresentBar />
-      <main id="main" tabIndex={-1} key={epoch}>{page}</main>
+      <main id="main" tabIndex={-1} key={epoch}>
+        <Banner mode={mode} conn={active} />
+        {refusal && <p className="notice" data-state="bad" role="alert" data-testid="refusal">{refusal}</p>}
+        {page}
+      </main>
       <p className="visually-hidden" role="status" aria-live="polite" data-testid="live">{msg}</p>
       <footer className="foot">No accounts here: this app runs on your machine and holds your connections. The Privilege console's own refusals (401/403) are shown as-is; claims are marked UNVERIFIED where we have not verified them (docs/references.md).</footer>
     </>
