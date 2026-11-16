@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import fs from "node:fs";
 import * as api from "./api.js";
 import Banner from "./components/Banner.jsx";
+import VerifyMark from "./components/VerifyMark.jsx";
 import Audit from "./pages/Audit.jsx";
 import Connections from "./pages/Connections.jsx";
 import Diagram from "./pages/Diagram.jsx";
@@ -128,7 +129,9 @@ function Shell() {
           help={{ href: "#/help", onClick: (e) => { e.preventDefault(); window.location.hash = "#/help"; } }}
           version={VERSION}
           onReset={reset}
-        />
+        >
+          <VerifyMark id="privilege-api-explorer" />
+        </TopMenu>
       </header>
       <PresentBar />
       <main id="main" tabIndex={-1} key={epoch}>
