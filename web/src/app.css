@@ -19,7 +19,7 @@
 .shell-nav a[aria-current="page"] { background: var(--accent-gradient); border-color: transparent; color: var(--on-accent); font-weight: 700; }
 .shell-bar .shell-right { margin-left: auto; } /* TopMenu renders .top-menu.shell-right; its own layout stays */
 @media (max-width: 600px) { .shell-bar { padding: 10px 16px; } .shell-nav { order: 3; flex-basis: 100%; } }
-main, .foot { max-width: min(100%, 1100px); margin: 0 auto; }
+main, .foot { max-width: min(100%, 2200px); margin: 0 auto; }
 main { padding: 8px 0 32px; }
 main:focus:not(:focus-visible) { outline: none; }
 .skip { position: absolute; left: -999px; top: 0; padding: 8px 16px; background: var(--surface); color: var(--text); border: 2px solid var(--accent); z-index: 50; }
