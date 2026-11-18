@@ -10,6 +10,8 @@ import Help from "./pages/Help.jsx";
 import Explorer from "./pages/Explorer.jsx";
 import { PresentBar, PresentProvider, usePresent } from "./present/Present.jsx";
 import TopMenu, { applyFontSize } from "./top-menu/TopMenu.jsx";
+import TalkTrackDialog from "./talk-track/TalkTrackDialog.jsx";
+import talkMd from "../../docs/talk-track.md?raw";
 
 const VERSION = (() => { try { return JSON.parse(fs.readFileSync(new URL("../../package.json", import.meta.url), "utf8")).version || null; } catch { return null; } })();
 
@@ -26,6 +28,15 @@ export default function App() {
 
 function Shell() {
   const { present, set: setPresent } = usePresent();
+  const [talkOpen, setTalkOpen] = useState(false);
+  const talkSteps = (() => {
+    const steps = []; let n = 0;
+    for (const line of talkMd.split("\n")) {
+      const m = line.match(/^\d+\.\s+(?:"(.+?)"|\*\*(.+?)\.\*\*\s*(.*))$/);
+      if (m) { n += 1; steps.push({ id: `s${n}`, title: (m[1] || m[2]).slice(0, 60), say: m[1] || m[3] }); }
+    }
+    return steps.length ? steps : [{ id: "s1", title: "Talk track", say: talkMd.slice(0, 600) }];
+  })();
   const [fontStep, setFontStep] = useState(() => { const f = store.get("pae.font"); return ["S", "M", "L"].includes(f) ? f : "M"; });
   useEffect(() => { applyFontSize(fontStep); store.set("pae.font", fontStep); }, [fontStep]);
   const [route, setRoute] = useState(parseHash);
@@ -125,6 +136,7 @@ function Shell() {
           theme={{ value: theme, onChange: setTheme }}
           fontSize={{ value: fontStep, onChange: setFontStep }}
           present={{ active: present, onToggle: () => setPresent(!present) }}
+          talkTrack={{ active: talkOpen, onToggle: () => setTalkOpen((v) => !v) }}
           shelfUrl="https://local.ping-devops.com:8443/"
           help={{ href: "#/help", onClick: (e) => { e.preventDefault(); window.location.hash = "#/help"; } }}
           version={VERSION}
@@ -138,6 +150,8 @@ function Shell() {
         <Banner mode={mode} conn={active} />
         {refusal && <p className="notice" data-state="bad" role="alert" data-testid="refusal">{refusal}</p>}
         {page}
+        <TalkTrackDialog isOpen={talkOpen} onClose={() => setTalkOpen(false)} talk={talkSteps} />
+
       </main>
       <p className="visually-hidden" role="status" aria-live="polite" data-testid="live">{msg}</p>
       <footer className="foot">No accounts here: this app runs on your machine and holds your connections. The Privilege console's own refusals (401/403) are shown as-is; claims are marked UNVERIFIED where we have not verified them (docs/references.md).</footer>
