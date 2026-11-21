@@ -79,13 +79,13 @@ test("open an operation, press Call, and the real-time result shows status, ms, 
   expect(state.calls.some((c) => c.url === "/api/connections/c1/call" && c.body.opId === "op-1")).toBe(true);
 });
 
-test("the result body marks this lab's important keys (Kind, State, Scopes ...) in both views, and the pane has no scroll cap", () => {
+test("the result body marks this lab's important keys (Kind, State) in both views, and the pane has no scroll cap", () => {
   const body = { Users: [{ ObjectMeta: { Kind: "User", Name: "u1" }, Spec: { State: "pending", Scopes: ["mcp"], Notes: "x" } }] };
   const { container } = render(<Result result={{ status: 200, ms: 3, path: "/api/t/v1/users", sessionId: "s1", body }} />);
   const hotRows = () => [...container.querySelectorAll('.jform__row[data-hot="true"]')].map((r) => r.textContent);
-  expect(hotRows().some((t) => t.startsWith("Kind"))).toBe(true);
-  expect(hotRows().some((t) => t.startsWith("State"))).toBe(true);
-  expect(hotRows().some((t) => t.startsWith("Notes"))).toBe(false);
+  expect(hotRows().some((t) => /(^|\.)Kind/.test(t))).toBe(true);
+  expect(hotRows().some((t) => /(^|\.)State/.test(t))).toBe(true);
+  expect(hotRows().some((t) => /(^|\.)Notes/.test(t))).toBe(false);
   setJsonView("raw");
   cleanup();
   const raw = render(<Result result={{ status: 200, ms: 3, path: "/api/t/v1/users", sessionId: "s1", body }} />).container;

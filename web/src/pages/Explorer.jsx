@@ -6,7 +6,7 @@ import Json from "../components/JsonPane.jsx";
 
 const METHODS = ["GET", "POST", "PUT", "DELETE", "PATCH"];
 // The keys a reader looks for in a console response (the mock and the real console share the imodel shape: ObjectMeta + Spec).
-const RESULT_HOT = ["Kind", "State", "Enabled", "Scopes", "NotAfter", "Issuer", "Audience", "ActionMap"];
+const RESULT_HOT = ["Kind", "State"];
 
 function MethodBadge({ m }) {
   return <span className={`badge badge--${classOf({ method: m })}`} data-testid={`method-${m}`}>{m}</span>;
