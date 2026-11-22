@@ -18,6 +18,15 @@ The API catalog is the Privilege console's own swagger (`imodel.swagger.json`, S
 
 ## Run from a clone
 
+### Postman
+
+`postman/privilege-api-explorer-lab.postman_collection.json` browses the console surface without the UI: the 447-operation OpenAPI catalog and one operation's detail, the saved connections, the audit log, and the read/write diagram-studio documents. In real mode the app proxies the console with its key/secret headers server-side; the mock-console route answers 409 `mock_only` in real mode (the negative case). The committed environment carries placeholders; `fill-env.mjs` fills `PRIVILEGE_EXPLORER_MODE` from the shared env file.
+
+```
+node ../../shared/postman/generator.mjs --spec postman/spec.json            # regenerate (never hand-edit the output)
+npx newman run postman/privilege-api-explorer-lab.postman_collection.json
+```
+
 Prerequisites: Node 26 or newer (`.nvmrc` says 26). Docker only for the Docker form.
 
 ```bash

@@ -1,0 +1,11 @@
+{
+  "name": "Privilege API Explorer LAB — Live (example)",
+  "values": [
+    {
+      "key": "PRIVILEGE_EXPLORER_MODE",
+      "value": "real or mock (the app's own mode key; the lab reads it from the shared env)",
+      "enabled": true,
+      "type": "secret"
+    }
+  ]
+}
