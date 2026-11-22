@@ -1,0 +1,56 @@
+{
+  "name": "Privilege API Explorer LAB",
+  "slug": "privilege-api-explorer-lab",
+  "description": "API collection for Privilege API Explorer LAB: the Privilege console API surfaced for browsing — the OpenAPI operation catalog (447 ops), one operation's detail, the saved connections, the audit log, and the diagram-studio read/write diagrams. In real mode the app proxies the console with key/secret headers server-side; the mock console is mock-mode only.",
+  "baseUrl": "http://localhost:7813",
+  "env": {
+    "PRIVILEGE_EXPLORER_MODE": "real or mock (the app's own mode key; the lab reads it from the shared env)"
+  },
+  "folders": [
+    {
+      "name": "Sanity",
+      "description": "Health, mode info, the saved connections and the audit log.",
+      "requests": [
+        { "name": "Health", "method": "GET", "path": "/api/health",
+          "tests": ["pm.response.to.have.status(200);", "pm.expect(pm.response.json().state).to.eql('ready');"] },
+        { "name": "Info (mode)", "method": "GET", "path": "/api/info",
+          "tests": ["pm.response.to.have.status(200);", "pm.expect(pm.response.json()).to.have.property('mode');"] },
+        { "name": "Connections", "method": "GET", "path": "/api/connections",
+          "tests": ["pm.response.to.have.status(200);", "pm.expect(pm.response.json().connections).to.be.an('array');"] },
+        { "name": "Audit log", "method": "GET", "path": "/api/audit",
+          "tests": ["pm.response.to.have.status(200);", "pm.expect(pm.response.json()).to.have.property('entries');"] }
+      ]
+    },
+    {
+      "name": "Operation catalog",
+      "description": "The Privilege console OpenAPI catalog: browse all 447 operations, filter by tag in the UI, or fetch one operation's full detail.",
+      "requests": [
+        { "name": "Full spec (447 ops)", "method": "GET", "path": "/api/spec",
+          "tests": ["pm.response.to.have.status(200);", "pm.expect(pm.response.json().total).to.be.above(0);", "pm.expect(pm.response.json().operations).to.be.an('array');"] },
+        { "name": "One operation (op-1)", "method": "GET", "path": "/api/spec/ops/op-1",
+          "tests": ["pm.response.to.have.status(200);", "pm.expect(pm.response.json()).to.have.property('path');"] },
+        { "name": "Unknown operation (negative)", "method": "GET", "path": "/api/spec/ops/no-such-op",
+          "tests": ["pm.expect(pm.response.code).to.eql(404);"] }
+      ]
+    },
+    {
+      "name": "Diagrams",
+      "description": "The diagram-studio read and write diagrams (the write diagram is honest about the gates).",
+      "requests": [
+        { "name": "Diagram list", "method": "GET", "path": "/api/diagrams",
+          "tests": ["pm.response.to.have.status(200);", "pm.expect(pm.response.json().diagrams.length).to.be.above(0);"] },
+        { "name": "Read diagram", "method": "GET", "path": "/api/diagrams/read",
+          "tests": ["pm.response.to.have.status(200);", "pm.expect(pm.response.json().schema).to.eql('diagram-studio/1');"] }
+      ]
+    },
+    {
+      "name": "Mock console (mock mode only)",
+      "description": "In mock mode the app serves an in-process mock console. In real mode this answers 409 mock_only — that refusal is the negative case here.",
+      "mockOnly": true,
+      "requests": [
+        { "name": "Mock URL (mock mode only)", "method": "GET", "path": "/api/mock-url",
+          "tests": ["pm.expect(pm.response.code).to.be.oneOf([200, 409]);"] }
+      ]
+    }
+  ]
+}
