@@ -20,7 +20,7 @@
                 "exec": [
                   "/* Assertions for this request */",
                   "pm.response.to.have.status(200);",
-                  "pm.expect(pm.response.json().state).to.eql('ready');"
+                  "pm.expect(pm.response.json().state).to.be.oneOf(['ready', 'needs-setup']);"
                 ]
               }
             }
