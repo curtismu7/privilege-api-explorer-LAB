@@ -132,6 +132,7 @@ function Shell() {
           {NAV.map(([id, label]) => <a key={id} href={`#/${id}`} aria-current={route.page === id ? "page" : undefined}>{label}</a>)}
         </nav>
         <TopMenu
+          postman={{ repo: "curtismu7/privilege-api-explorer-LAB", slug: "privilege-api-explorer-lab" }}
           mode={{ value: mode, onChange: setMode, realAvailable: info ? realOk : null, realHint: info?.real?.needs?.length ? `Real is refused (${(info.real.failed ?? []).join(", ")}). ${info.real.needs.join(" ")}` : undefined }}
           theme={{ value: theme, onChange: setTheme }}
           fontSize={{ value: fontStep, onChange: setFontStep }}

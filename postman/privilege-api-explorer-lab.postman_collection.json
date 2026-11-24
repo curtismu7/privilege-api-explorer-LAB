@@ -18,9 +18,10 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "/* Assertions for this request */",
-                  "pm.response.to.have.status(200);",
-                  "pm.expect(pm.response.json().state).to.be.oneOf(['ready', 'needs-setup']);"
+                  "pm.test(\"Health\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().state).to.be.oneOf(['ready', 'needs-setup']);",
+                  "});"
                 ]
               }
             }
@@ -50,9 +51,10 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "/* Assertions for this request */",
-                  "pm.response.to.have.status(200);",
-                  "pm.expect(pm.response.json()).to.have.property('mode');"
+                  "pm.test(\"Info (mode)\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json()).to.have.property('mode');",
+                  "});"
                 ]
               }
             }
@@ -82,9 +84,10 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "/* Assertions for this request */",
-                  "pm.response.to.have.status(200);",
-                  "pm.expect(pm.response.json().connections).to.be.an('array');"
+                  "pm.test(\"Connections\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().connections).to.be.an('array');",
+                  "});"
                 ]
               }
             }
@@ -114,9 +117,10 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "/* Assertions for this request */",
-                  "pm.response.to.have.status(200);",
-                  "pm.expect(pm.response.json()).to.have.property('entries');"
+                  "pm.test(\"Audit log\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json()).to.have.property('entries');",
+                  "});"
                 ]
               }
             }
@@ -152,10 +156,11 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "/* Assertions for this request */",
-                  "pm.response.to.have.status(200);",
-                  "pm.expect(pm.response.json().total).to.be.above(0);",
-                  "pm.expect(pm.response.json().operations).to.be.an('array');"
+                  "pm.test(\"Full spec (447 ops)\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().total).to.be.above(0);",
+                  "  pm.expect(pm.response.json().operations).to.be.an('array');",
+                  "});"
                 ]
               }
             }
@@ -185,9 +190,10 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "/* Assertions for this request */",
-                  "pm.response.to.have.status(200);",
-                  "pm.expect(pm.response.json()).to.have.property('path');"
+                  "pm.test(\"One operation (op-1)\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json()).to.have.property('path');",
+                  "});"
                 ]
               }
             }
@@ -219,8 +225,9 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "/* Assertions for this request */",
-                  "pm.expect(pm.response.code).to.eql(404);"
+                  "pm.test(\"Unknown operation (negative)\", function () {",
+                  "  pm.expect(pm.response.code).to.eql(404);",
+                  "});"
                 ]
               }
             }
@@ -258,9 +265,10 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "/* Assertions for this request */",
-                  "pm.response.to.have.status(200);",
-                  "pm.expect(pm.response.json().diagrams.length).to.be.above(0);"
+                  "pm.test(\"Diagram list\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().diagrams.length).to.be.above(0);",
+                  "});"
                 ]
               }
             }
@@ -290,9 +298,10 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "/* Assertions for this request */",
-                  "pm.response.to.have.status(200);",
-                  "pm.expect(pm.response.json().schema).to.eql('diagram-studio/1');"
+                  "pm.test(\"Read diagram\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json().schema).to.eql('diagram-studio/1');",
+                  "});"
                 ]
               }
             }
@@ -329,8 +338,9 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "/* Assertions for this request */",
-                  "pm.expect(pm.response.code).to.be.oneOf([200, 409]);"
+                  "pm.test(\"Mock URL (mock mode only)\", function () {",
+                  "  pm.expect(pm.response.code).to.be.oneOf([200, 409]);",
+                  "});"
                 ]
               }
             }
