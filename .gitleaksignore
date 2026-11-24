@@ -1,0 +1,3 @@
+# The Privilege console API key and secret in .env.bak-20261120-cutover (commit 573d78d) were rotated on 2026-11-24 (owner said so), so these two history findings are no longer live. Exact fingerprints only.
+573d78df2a8d63b1ffe34daa774456a0f236f2aa:.env.bak-20261120-cutover:generic-api-key:4
+573d78df2a8d63b1ffe34daa774456a0f236f2aa:.env.bak-20261120-cutover:generic-api-key:5

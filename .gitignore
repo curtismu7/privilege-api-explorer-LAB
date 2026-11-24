@@ -3,6 +3,9 @@ dist/
 coverage/
 .env
 .env.bak.*
+# Any other .env backup or variant (the hyphenated .env.bak-<date> slipped past the line above): only the example is tracked.
+.env.*
+!.env.example
 *.log
 .DS_Store
 .data/
