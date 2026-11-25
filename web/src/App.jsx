@@ -125,7 +125,7 @@ function Shell() {
       <header className="shell-bar">
         <span className="shell-brand">
           <span className="shell-logo" aria-hidden="true">PA</span>
-          <span className="shell-name">Privilege API Explorer LAB</span>
+          <span className="shell-brand__name">Privilege API Explorer LAB</span>
           <span className={`shell-badge${mode === "real" ? " shell-badge--real" : ""}`} data-testid="mode">Mode: {mode}</span>
         </span>
         <nav className="shell-nav" aria-label="Pages">
