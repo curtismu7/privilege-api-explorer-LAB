@@ -27,7 +27,7 @@ The same picture is the app's Diagram page (ReactFlow: movable boxes, Simulate, 
 
 ## Web (`web/src`)
 
-The header holds the Mock / Real toggle (the page always opens in Mock and remembers no mode; `GET /api/info` says whether Real is allowed), the `Mode:` chip, Reset, Present and the theme picker, with the mode banner above them on every page. The toggle decides which saved connections a page works with: the mock console connection in Mock, real consoles in Real. Pages: Explorer (search + filters + operation form + real-time result pane), Connections (wizard, mock demo), Audit, Diagram. Presenter mode toggles with `p`.
+The header holds the Mock / Real toggle (the page always opens in Mock and remembers no mode; `GET /api/info` says whether Real is allowed), the `Mode:` chip, Reset, Present and the theme picker, with the Real-or-mock modal (MOCK or REAL) shown when the page opens and again on a switch to the other mode. The toggle decides which saved connections a page works with: the mock console connection in Mock, real consoles in Real. Pages: Explorer (search + filters + operation form + real-time result pane), Connections (wizard, mock demo), Audit, Diagram. Presenter mode toggles with `p`.
 
 The Explorer result pane shows the HTTP status, elapsed ms, the exact path that was called, the session id and the raw body — the console's own refusals included, as-is.
 

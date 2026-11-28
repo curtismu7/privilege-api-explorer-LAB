@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = (p) => fs.readFileSync(path.join(root, p), 'utf8');
-const WEB_JSX = ['App.jsx', 'components/Banner.jsx', 'components/HealthCard.jsx', 'pages/Audit.jsx', 'pages/Connections.jsx', 'pages/Diagram.jsx', 'pages/Explorer.jsx', 'present/Present.jsx'];
+const WEB_JSX = ['App.jsx', 'components/WritesNotice.jsx', 'components/HealthCard.jsx', 'pages/Audit.jsx', 'pages/Connections.jsx', 'pages/Diagram.jsx', 'pages/Explorer.jsx', 'present/Present.jsx'];
 const SKIP = new Set(['node_modules', 'dist', '.git', 'package-lock.json', '.data']);
 const walk = (dir, fn) => {
   for (const name of fs.readdirSync(dir)) {

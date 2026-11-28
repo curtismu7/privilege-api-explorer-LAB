@@ -22,7 +22,7 @@ Docker (OrbStack, never Docker Desktop): `HOST_PORT=7813 docker compose up --bui
 
 ## Rules that bite here
 
-- **Mock / Real toggle in the header on every page**, the mode shown (`Mode: mock|real`) and the banner saying the same mode, presenter mode included. The page always opens in Mock (nothing about the mode is remembered). **Real is refused** unless `PRIVILEGE_EXPLORER_MODE=real` (shared settings file or environment) and the bind is loopback (a non-loopback `PAE_BIND` counts only with the image's `PAE_CONTAINER=1`): `server/src/config.js` guards, `GET /api/info`, 403 `real_refused` on every route for a non-mock connection. Do not add a path that makes Real work without the owner. Never read a bare `MODE`, never `process.env.MODE`.
+- **Mock / Real toggle in the header on every page**, the mode shown (`Mode: mock|real`) and the Real-or-mock modal (shared `mode-modal`, rule 2) saying the same mode when the page opens and on each switch. The page always opens in Mock (nothing about the mode is remembered). **Real is refused** unless `PRIVILEGE_EXPLORER_MODE=real` (shared settings file or environment) and the bind is loopback (a non-loopback `PAE_BIND` counts only with the image's `PAE_CONTAINER=1`): `server/src/config.js` guards, `GET /api/info`, 403 `real_refused` on every route for a non-mock connection. Do not add a path that makes Real work without the owner. Never read a bare `MODE`, never `process.env.MODE`.
 - **Zero outbound in Mock.** `server/src/netguard.js` (installed by `index.js`) refuses every non-loopback socket, DNS lookup, fetch, UDP send and UDP connect; a Real operation holds a permit for the console origin of its own connection only (`urls.js` `liveHosts`, `withPermits` in `app.js`). Tests run under the recorder in `server/test/netguard.js` and assert zero attempts.
 - **The API secret is write-only.** It is never returned (`store.js` `publicView`), never logged, never audited (`redact.js` scrubs it from every response, error and audit line). Reset keeps connections but turns writes off.
 - **Writes are gated.** GET runs; POST/PUT need `allowWrites` on the connection; DELETE and PATCH always need it (`client.js`, gated in `app.js`). A blocked call is 403 `writes_disabled`, audited.
@@ -42,7 +42,7 @@ Docker (OrbStack, never Docker Desktop): `HOST_PORT=7813 docker compose up --bui
 - `server/test/api.test.js`: the gate (connections, secret write-only), the catalog search, the call proxy, the write gate, the audit.
 - `server/test/labproxy.test.js`: the lab-proxy Host names and the forwarded same-origin writes.
 - `server/test/diagrams.test.js`: diagram-studio/1 data, the loader, the routes.
-- `web/src/App.test.jsx`: the header toggle on every page, the banner, the result pane, the refusal message, Reset, inert server text.
+- `web/src/App.test.jsx`: the header toggle on every page, the Real-or-mock modal (Mock, Real, Real-on-load), the result pane, the refusal message, Reset, inert server text.
 - `scripts/repo.test.mjs`: README standard, CSS standard, CI, no k8s/MODE/EC keygen, Real stays an opt-in. `scripts/compose.test.mjs`: loopback-only container publish. `scripts/docs.test.mjs`: docs match the code. `scripts/shelf-entry.test.mjs`, `content-pack.test.mjs`, `talk-track.test.mjs`.
 
 ## Shelf and content pack

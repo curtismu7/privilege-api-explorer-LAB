@@ -5,21 +5,26 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import App from "./App.jsx";
 import { Result } from "./pages/Explorer.jsx";
 import { setJsonView } from "./components/JsonPane.jsx";
-import { conn, fakeApi, REAL_REFUSED } from "./test-helpers.js";
+import { conn, fakeApi, REAL_OK, REAL_REFUSED } from "./test-helpers.js";
 
-beforeEach(() => { setJsonView("form"); window.location.hash = ""; try { localStorage.clear(); } catch { /* none */ } delete document.documentElement.dataset.present; });
-afterEach(() => { cleanup(); vi.restoreAllMocks(); });
+beforeEach(() => { setJsonView("form"); try { sessionStorage.clear(); } catch { /* none */ } window.location.hash = ""; try { localStorage.clear(); } catch { /* none */ } delete document.documentElement.dataset.present; });
+afterEach(() => { cleanup(); vi.restoreAllMocks(); try { sessionStorage.clear(); } catch { /* none */ } });
 const go = (h) => { window.location.hash = h; window.dispatchEvent(new HashChangeEvent("hashchange")); };
 
-test("skip link, nav and banner: Mock is the default, the banner says what is simulated", async () => {
+test("skip link, nav and modal: Mock is the default, the modal says what is simulated, and the old banner is gone", async () => {
   fakeApi();
   render(<App />);
   expect(screen.getByText("Skip to content")).toHaveAttribute("href", "#main");
-  const banner = await screen.findByTestId("banner");
-  await waitFor(() => expect(within(banner).getByText(/^MOCK mode, simulated/)).toBeInTheDocument());
-  expect(banner).toHaveTextContent(/not a recording/);
-  expect(banner).toHaveTextContent(/Nothing leaves this machine/);
-  expect(banner).toHaveTextContent(/Writes are off/);
+  const modal = await screen.findByTestId("mode-modal");
+  expect(modal).toHaveAttribute("data-mode", "mock");
+  expect(modal).toHaveTextContent("MOCK");
+  expect(modal).toHaveTextContent(/not a recording/);
+  expect(modal).toHaveTextContent(/Nothing leaves this machine/);
+  expect(screen.queryByTestId("banner")).toBeNull();
+  expect(document.querySelector("main > .banner, [data-testid=banner] .banner")).toBeNull();
+  await waitFor(() => expect(screen.getByTestId("writes-notice")).toHaveTextContent(/Writes are off/));
+  await userEvent.setup().click(screen.getByTestId("mode-modal-ok"));
+  expect(screen.queryByTestId("mode-modal")).toBeNull();
   expect(screen.getByTestId("mode")).toHaveTextContent("Mode: mock");
   for (const label of ["Explorer", "Connections", "Audit", "Diagram"]) expect(screen.getByRole("link", { name: label })).toBeInTheDocument();
 });
@@ -143,16 +148,32 @@ test("Real refused: the toggle is disabled with the server's reason and the page
   expect(screen.getByTestId("mode")).toHaveTextContent("Mode: mock");
 });
 
-test("Real allowed: pressing the toggle switches mode, the banner follows, and nothing about the mode is stored", async () => {
+test("Real allowed: pressing the toggle switches mode, the modal follows with REAL, and nothing about the mode is stored", async () => {
   fakeApi({ conns: [conn()] });
   const user = userEvent.setup();
   render(<App />);
   await waitFor(() => expect(screen.getByTestId("mode-select").querySelector('option[value="real"]').disabled).toBe(false));
+  await user.click(await screen.findByTestId("mode-modal-ok")); // the MOCK modal, dismissed
   await user.selectOptions(screen.getByTestId("mode-select"), "real");
   expect(screen.getByTestId("mode")).toHaveTextContent("Mode: real");
-  const banner = screen.getByTestId("banner");
-  await waitFor(() => expect(within(banner).getByText(/^REAL mode, owner-run/)).toBeInTheDocument());
+  const modal = await screen.findByTestId("mode-modal");
+  expect(modal).toHaveAttribute("data-mode", "real");
+  expect(modal).toHaveTextContent("REAL");
+  expect(modal).toHaveTextContent(/Owner-run/);
+  expect(modal).toHaveTextContent(/Writes stay off until you enable them per connection/);
   expect(localStorage.getItem("pae.mode")).toBeNull();
+});
+
+test("a server that starts in Real: the modal says MOCK until /api/info answers, then REAL, which is not blocked by the earlier MOCK", async () => {
+  let release;
+  const held = new Promise((r) => { release = r; });
+  fakeApi({ handlers: { "GET /api/info": (_b, _s, json) => held.then(() => json(200, { mode: "real", source: "real", modes: ["mock", "real"], real: REAL_OK })) } });
+  render(<App />);
+  expect(await screen.findByTestId("mode-modal")).toHaveAttribute("data-mode", "mock");
+  release();
+  await waitFor(() => expect(screen.getByTestId("mode-modal")).toHaveAttribute("data-mode", "real"));
+  expect(screen.getByTestId("mode-modal")).toHaveTextContent("REAL");
+  expect(screen.getByTestId("mode")).toHaveTextContent("Mode: real");
 });
 
 test("Audit: entries render as text rows", async () => {
@@ -170,7 +191,8 @@ test("Reset from the header calls the server and says what was kept", async () =
   const state = fakeApi({ conns: [conn()] });
   const user = userEvent.setup();
   render(<App />);
-  await screen.findByTestId("banner");
+  await screen.findByTestId("writes-notice");
+  await user.click(screen.getByTestId("mode-modal-ok"));
   await user.click(screen.getByTestId("reset"));
   await waitFor(() => expect(state.calls.some((c) => c.url === "/api/reset")).toBe(true));
   await waitFor(() => expect(screen.getByTestId("live")).toHaveTextContent(/Saved connections kept/));
