@@ -54,7 +54,7 @@
     },
     {
       "id": "simulation-honesty",
-      "definition": "The banner on every page names the mode and says what is simulated. Mock-issued answers are labelled as an illustrative sample, not a recording.",
+      "definition": "The MOCK or REAL modal that opens the page names the mode and says what is simulated; the Mode chip stays in the header. Mock-issued answers are labelled as an illustrative sample, not a recording.",
       "term": "Simulation honesty"
     },
     {

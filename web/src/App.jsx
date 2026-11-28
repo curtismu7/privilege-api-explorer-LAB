@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useState } from "react";
 import fs from "node:fs";
 import * as api from "./api.js";
-import Banner from "./components/Banner.jsx";
+import WritesNotice from "./components/WritesNotice.jsx";
+import ModeModal from "./mode-modal/ModeModal.jsx";
 import VerifyMark from "./components/VerifyMark.jsx";
 import Audit from "./pages/Audit.jsx";
 import Connections from "./pages/Connections.jsx";
@@ -15,6 +16,10 @@ import talkMd from "../../docs/talk-track.md?raw";
 
 const VERSION = (() => { try { return JSON.parse(fs.readFileSync(new URL("../../package.json", import.meta.url), "utf8")).version || null; } catch { return null; } })();
 
+const MODE_LINES = {
+  mock: "An in-process mock of the Privilege console API answers on this machine, and the sample tenant is illustrative, not a recording. Nothing leaves this machine, and write calls change only that in-memory sample.",
+  real: "Owner-run: calls go to the console origin of the connection you use, with your saved API key and secret, and act on it. Writes stay off until you enable them per connection.",
+};
 const NAV = [["explorer", "Explorer"], ["connections", "Connections"], ["audit", "Audit"], ["diagram", "Diagram"]];
 const store = {
   get: (k) => { try { return localStorage.getItem(k); } catch { return null; } },
@@ -148,12 +153,13 @@ function Shell() {
       </header>
       <PresentBar />
       <main id="main" tabIndex={-1} key={epoch}>
-        <Banner mode={mode} conn={active} />
+        <WritesNotice mode={mode} conn={active} />
         {refusal && <p className="notice" data-state="bad" role="alert" data-testid="refusal">{refusal}</p>}
         {page}
         <TalkTrackDialog isOpen={talkOpen} onClose={() => setTalkOpen(false)} talk={talkSteps} />
 
       </main>
+      <ModeModal mode={mode} lines={MODE_LINES} storageKey="pae-mode" />
       <p className="visually-hidden" role="status" aria-live="polite" data-testid="live">{msg}</p>
       <footer className="foot">No accounts here: this app runs on your machine and holds your connections. The Privilege console's own refusals (401/403) are shown as-is; claims are marked UNVERIFIED where we have not verified them (docs/references.md).</footer>
     </>

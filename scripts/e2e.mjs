@@ -45,7 +45,14 @@ page.on('pageerror', (e) => pageErrors.push(String(e)));
 
 try {
   await page.goto(base, { waitUntil: 'networkidle' });
-  check((await page.getByTestId('banner').textContent()).includes('MOCK mode'), 'the banner says Mock on load');
+  // The Real-or-mock modal opens the page: MOCK, no old banner; "Got it" closes it, and a reload in the same session does not bring it back.
+  await page.getByTestId('mode-modal').waitFor();
+  check((await page.getByTestId('mode-modal').getAttribute('data-mode')) === 'mock' && (await page.getByTestId('mode-modal').textContent()).includes('MOCK'), 'the modal says MOCK on load');
+  check((await page.getByTestId('banner').count()) === 0 && (await page.locator('main > .banner').count()) === 0, 'no old simulation banner');
+  await page.getByTestId('mode-modal-ok').click();
+  check((await page.getByTestId('mode-modal').count()) === 0, 'Got it closes the modal');
+  await page.reload({ waitUntil: 'networkidle' });
+  check((await page.getByTestId('mode-modal').count()) === 0, 'a reload in the same session does not show the modal again');
   // Connections first: add the mock console so the Explorer has a connection
   await page.goto(`${base}/#/connections`, { waitUntil: 'networkidle' });
   await page.getByRole('button', { name: 'Add mock console connection' }).click();

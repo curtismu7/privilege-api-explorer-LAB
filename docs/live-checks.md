@@ -14,13 +14,13 @@ Real mode was verified **once** by the owner against the **local desktop Privile
 2. Scope mapping: which collections your key may read. Browse the catalog service by service; record which answer 200 and which answer 401/403/500.
 3. The session-id header: confirm the console accepts any UUID value (we measured it is unvalidated) and that omitting it is a 400.
 4. One read call in the Explorer: open a GET operation, press **Call**, record the status, the ms and the body shape.
-5. One gated write on a throwaway object (only after checks 1 to 4): enable writes on the connection (the red banner appears), run a POST for a throwaway object named so you can recognise it, then verify in the console that it exists. Delete it in the console (or with the gated DELETE), then turn writes off again.
+5. One gated write on a throwaway object (only after checks 1 to 4): enable writes on the connection (the red WRITES ARE ENABLED notice appears), run a POST for a throwaway object named so you can recognise it, then verify in the console that it exists. Delete it in the console (or with the gated DELETE), then turn writes off again.
 6. The `appusertoken` JWT flow: if Ping publishes the encrypt/decrypt helper's scheme, the JWT login from the console docs can be added beside the key/secret scheme. Until then it is not implemented.
 7. Self-signed certificate: on the local desktop console, tick "self-signed certificate" on the connection; on a cloud console it must stay off.
 
 ## Stop if
 
-- The connection banner says **REAL mode** and you do not recognise the console origin or the tenant, or it is a tenant you do not own or are not allowed to change.
+- The modal or the `Mode:` chip says **REAL** and you do not recognise the console origin or the tenant, or it is a tenant you do not own or are not allowed to change.
 
 ## Evidence template
 
